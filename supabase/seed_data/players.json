@@ -1,0 +1,109 @@
+{
+  "players": [
+    {
+      "name": "Victor Osimhen",
+      "position": "Forward",
+      "team": "Napoli",
+      "current_price": 150000000,
+      "is_available": true
+    },
+    {
+      "name": "Samuel Chukwueze",
+      "position": "Forward",
+      "team": "AC Milan",
+      "current_price": 80000000,
+      "is_available": true
+    },
+    {
+      "name": "Wilfred Ndidi",
+      "position": "Midfielder",
+      "team": "Leicester City",
+      "current_price": 70000000,
+      "is_available": true
+    },
+    {
+      "name": "Alex Iwobi",
+      "position": "Midfielder",
+      "team": "Fulham",
+      "current_price": 65000000,
+      "is_available": true
+    },
+    {
+      "name": "Calvin Bassey",
+      "position": "Defender",
+      "team": "Fulham",
+      "current_price": 55000000,
+      "is_available": true
+    },
+    {
+      "name": "Francis Uzoho",
+      "position": "Goalkeeper",
+      "team": "Omonia",
+      "current_price": 45000000,
+      "is_available": true
+    },
+    {
+      "name": "Maduka Okoye",
+      "position": "Goalkeeper",
+      "team": "Udinese",
+      "current_price": 40000000,
+      "is_available": true
+    },
+    {
+      "name": "Kenneth Omeruo",
+      "position": "Defender",
+      "team": "Kasimpasa",
+      "current_price": 35000000,
+      "is_available": true
+    },
+    {
+      "name": "Joe Aribo",
+      "position": "Midfielder",
+      "team": "Southampton",
+      "current_price": 60000000,
+      "is_available": true
+    },
+    {
+      "name": "Terem Moffi",
+      "position": "Forward",
+      "team": "Nice",
+      "current_price": 75000000,
+      "is_available": true
+    },
+    {
+      "name": "William Troost-Ekong",
+      "position": "Defender",
+      "team": "PAOK",
+      "current_price": 45000000,
+      "is_available": true
+    },
+    {
+      "name": "Kelechi Iheanacho",
+      "position": "Forward",
+      "team": "Leicester City",
+      "current_price": 70000000,
+      "is_available": true
+    },
+    {
+      "name": "Moses Simon",
+      "position": "Forward",
+      "team": "Nantes",
+      "current_price": 55000000,
+      "is_available": true
+    },
+    {
+      "name": "Ola Aina",
+      "position": "Defender",
+      "team": "Nottingham Forest",
+      "current_price": 50000000,
+      "is_available": true
+    },
+    {
+      "name": "Paul Onuachu",
+      "position": "Forward",
+      "team": "Southampton",
+      "current_price": 65000000,
+      "is_available": true
+    }
+  ]
+} 

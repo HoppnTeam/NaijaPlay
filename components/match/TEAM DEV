@@ -1,0 +1,282 @@
+Here’s a structured layout and component breakdown for the **Team Management Page** of a fantasy football  NaijaPlay app  in Nigeria, incorporating all the functionalities you’ve described:
+
+---
+
+### **Team Management Page Layout**
+
+#### **1. Header Section**
+- **User Budget Display**: 
+  - Bold and prominent display of the user’s current budget balance.
+  - **"Add Tokens" Button**: Allows users to purchase tokens to increase their budget capacity.
+  - **Remaining Team Count**: Displays how many teams the user can still create (e.g., "Teams Remaining: 2/5").
+
+---
+
+#### **2. Current Teams Section**
+- **User-Created Teams List**:
+  - Displays all teams created by the user.
+  - Each team card shows:
+    - Team name.
+    - Formation (e.g., "4-3-3").
+    - Team value (total cost of players).
+    - **"Manage Team" Button**: Redirects to the team-building interface for that specific team.
+    - **"Delete Team" Button**: Allows users to remove a team (with a confirmation prompt).
+
+---
+
+#### **3. Team Building Interface**
+- **Team Name and Details**:
+  - Editable field for team name.
+  - Display of current budget and team value.
+
+- **Formation Visualizer**:
+  - Interactive visualizer where users can select and view their squad formation (e.g., 4-4-2, 3-5-2, etc.).
+  - Drag-and-drop functionality to position players in the formation.
+
+- **Player Selection**:
+  - **Starting XI**: Users can add players to their starting lineup.
+  - **Substitutes**: Users can select substitute players.
+  - **Captain Selection**: Users can assign a captain and vice-captain for the team.
+
+- **Player Pool**:
+  - Displays available players filtered by position (e.g., Goalkeepers, Defenders, Midfielders, Forwards).
+  - Each player card shows:
+    - Player name.
+    - Position.
+    - Price.
+    - Stats (e.g., goals, assists, clean sheets).
+    - **"Add to Team" Button**: Adds the player to the squad if budget allows.
+
+- **Save Team Button**:
+  - Saves the team and updates the Current Teams section.
+
+---
+
+#### **4. Player Transfer Market Interface**
+- **Search and Filters**:
+  - Search bar to find players by name.
+  - Filters by position, price range, team, and stats.
+
+- **Player Listings**:
+  - Displays players available for transfer.
+  - Each player card shows:
+    - Player name.
+    - Position.
+    - Price.
+    - Stats.
+    - **"Buy" Button**: Allows users to purchase the player (if within budget).
+    - **"Sell" Button**: For users to sell players from their squad.
+    - **"Trade" Button**: Initiates a trade proposal with other users.
+
+- **Transfer History**:
+  - Displays a log of recent transfers (bought, sold, or traded players).
+
+---
+
+#### **5. Token Purchase Section**
+- **Token Packages**:
+  - Displays available token packages (e.g., "100 Tokens for ₦500", "500 Tokens for ₦2000").
+  - **"Buy Now" Button**: Redirects to a payment gateway for token purchase.
+
+- **Transaction History**:
+  - Displays a log of token purchases and budget updates.
+
+---
+
+#### **6. Navigation and Actions**
+- **Create New Team Button**:
+  - Visible only if the user has remaining team slots.
+  - Redirects to the team creation form.
+
+- **Back to Dashboard Button**:
+  - Returns the user to the main dashboard.
+
+---
+
+### **Proposed Workflow**
+
+1. **New User Flow**:
+   - User signs up and logs in.
+   - Navigates to the Teams section and sees "Create Your First Team."
+   - Completes the team creation form and is redirected to the Team Management Page.
+
+2. **Team Building**:
+   - User selects players, assigns captains, and chooses a formation using the Formation Visualizer.
+   - Saves the team, which then appears in the Current Teams section.
+
+3. **Transfer Market**:
+   - User can buy, sell, or trade players to optimize their squad.
+   - Transfers are reflected in the team’s budget and value.
+
+4. **Budget Management**:
+   - User can purchase tokens to increase their budget.
+   - Budget updates are displayed prominently.
+
+---
+
+### **Key Components**
+- **Team Card**: Displays team details and allows management.
+- **Formation Visualizer**: Interactive tool for squad formation.
+- **Player Card**: Displays player details and allows adding/selling.
+- **Transfer Market Interface**: Facilitates buying, selling, and trading players.
+- **Token Purchase Interface**: Handles budget increases.
+
+---
+
+This layout ensures a seamless and intuitive user experience while incorporating all the necessary features for team management in a fantasy football app. 
+
+SUPABASE DATABASE  SETUP :
+
+To support the **Team Management** functionality for our fantasy football app NaijaPlay, we’ll need a well-structured database. Below are the **necessary database tables** and their relationships to handle teams, players, transfers, budgets, and user interactions:
+
+---
+
+### **1. Users Table**
+Stores user information.
+- **Fields**:
+  - `user_id` (Primary Key, Auto Increment)
+  - `username`
+  - `email`
+  - `password_hash`
+  - `tokens_balance` (Total tokens available for the user)
+  - `budget` (Current budget for team management)
+  - `created_at` (Timestamp for account creation)
+  - `updated_at` (Timestamp for last update)
+
+---
+
+### **2. Teams Table**
+Stores information about user-created teams.
+- **Fields**:
+  - `team_id` (Primary Key, Auto Increment)
+  - `user_id` (Foreign Key referencing `Users`)
+  - `team_name`
+  - `formation` (e.g., "4-3-3")
+  - `captain_id` (Foreign Key referencing `Players`)
+  - `vice_captain_id` (Foreign Key referencing `Players`)
+  - `budget_used` (Total budget spent on the team)
+  - `created_at`
+  - `updated_at`
+
+---
+
+### **3. Players Table**
+Stores information about all available players in the system.
+- **Fields**:
+  - `player_id` (Primary Key, Auto Increment)
+  - `player_name`
+  - `position` (e.g., Goalkeeper, Defender, Midfielder, Forward)
+  - `team` (Real-world team the player belongs to, e.g., "Manchester United")
+  - `price` (Cost to buy the player)
+  - `stats` (JSON field to store player stats like goals, assists, clean sheets, etc.)
+  - `created_at`
+  - `updated_at`
+
+---
+
+### **4. Squad Table**
+Stores the relationship between teams and players (i.e., which players are in which team).
+- **Fields**:
+  - `squad_id` (Primary Key, Auto Increment)
+  - `team_id` (Foreign Key referencing `Teams`)
+  - `player_id` (Foreign Key referencing `Players`)
+  - `is_starting` (Boolean: Is the player in the starting XI?)
+  - `is_substitute` (Boolean: Is the player a substitute?)
+  - `created_at`
+  - `updated_at`
+
+---
+
+### **5. Transfers Table**
+Stores information about player transfers (buying, selling, trading).
+- **Fields**:
+  - `transfer_id` (Primary Key, Auto Increment)
+  - `user_id` (Foreign Key referencing `Users`)
+  - `player_id` (Foreign Key referencing `Players`)
+  - `transfer_type` (e.g., "buy", "sell", "trade")
+  - `transfer_price` (Price at which the player was bought/sold)
+  - `transfer_date` (Timestamp of the transfer)
+  - `created_at`
+  - `updated_at`
+
+---
+
+### **6. Tokens Table**
+Stores information about token purchases and usage.
+- **Fields**:
+  - `token_id` (Primary Key, Auto Increment)
+  - `user_id` (Foreign Key referencing `Users`)
+  - `token_amount` (Number of tokens purchased)
+  - `purchase_price` (Amount paid for the tokens)
+  - `purchase_date` (Timestamp of the purchase)
+  - `created_at`
+  - `updated_at`
+
+---
+
+### **7. Formation Table**
+Stores predefined formations and their configurations.
+- **Fields**:
+  - `formation_id` (Primary Key, Auto Increment)
+  - `formation_name` (e.g., "4-3-3", "3-5-2")
+  - `formation_config` (JSON field to store the formation layout, e.g., `{"defenders": 4, "midfielders": 3, "forwards": 3}`)
+  - `created_at`
+  - `updated_at`
+
+---
+
+### **8. Trade Proposals Table**
+Stores information about trade proposals between users.
+- **Fields**:
+  - `trade_id` (Primary Key, Auto Increment)
+  - `proposer_user_id` (Foreign Key referencing `Users`)
+  - `receiver_user_id` (Foreign Key referencing `Users`)
+  - `proposed_player_id` (Foreign Key referencing `Players`)
+  - `requested_player_id` (Foreign Key referencing `Players`)
+  - `status` (e.g., "pending", "accepted", "rejected")
+  - `created_at`
+  - `updated_at`
+
+---
+
+### **Relationships Between Tables**
+1. **Users → Teams**: One-to-Many (A user can create multiple teams).
+2. **Teams → Squad**: One-to-Many (A team can have multiple players).
+3. **Players → Squad**: Many-to-Many (A player can belong to multiple teams, and a team can have multiple players).
+4. **Users → Transfers**: One-to-Many (A user can perform multiple transfers).
+5. **Users → Tokens**: One-to-Many (A user can make multiple token purchases).
+6. **Teams → Formation**: Many-to-One (A team can have one formation).
+
+---
+
+### **Example Queries**
+1. **Fetch All Teams for a User**:
+   ```sql
+   SELECT * FROM Teams WHERE user_id = ?;
+   ```
+
+2. **Fetch Players in a Specific Team**:
+   ```sql
+   SELECT p.* FROM Players p
+   JOIN Squad s ON p.player_id = s.player_id
+   WHERE s.team_id = ?;
+   ```
+
+3. **Fetch Transfer History for a User**:
+   ```sql
+   SELECT * FROM Transfers WHERE user_id = ?;
+   ```
+
+4. **Fetch Token Purchase History**:
+   ```sql
+   SELECT * FROM Tokens WHERE user_id = ?;
+   ```
+
+5. **Fetch Available Formations**:
+   ```sql
+   SELECT * FROM Formation;
+   ```
+
+---
+
+This database structure ensures scalability, flexibility, and efficient data management for your fantasy football site. Let me know if you need further clarification or additional features!
