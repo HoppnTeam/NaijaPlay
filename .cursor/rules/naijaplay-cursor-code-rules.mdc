@@ -1,0 +1,41 @@
+---
+description: Use this before any new task implementation
+globs: 
+---
+Contextual Code Editing
+
+No New Files Without Explicit Ask: If the user is viewing ProfilePage.tsx, assume edits apply to this file unless instructed otherwise. Never create ProfilePageV2.tsx or similar without explicit approval.
+
+Route Guardrails: Validate routes against the app’s routing system (e.g., Next.js app/ directory structure, React Router config). Never redefine /settings if it already maps to SettingsPage.tsx.
+
+Type Safety First
+
+Schema-to-Type Matching: For Supabase interactions, generate TypeScript types directly from the database schema (e.g., use supabase-gen or pgtyped). Flag type mismatches (e.g., string vs UUID) before writing code.
+
+Strict Null Checks: Enforce optional chaining (user?.profile?.name) and type guards for Supabase responses.
+
+Incremental Migrations
+
+Modify, Don’t Duplicate: When altering a table (e.g., adding last_login), check supabase/migrations/20240510_create_users_table.sql. If the table exists, generate an ALTER TABLE statement instead of recreating the table.
+
+
+# Cursor Rules for Supabase and Routing Management
+
+## Project Context
+- **Existing Components**: Do not create new components for tasks related to editing existing ones. Always look for existing implementations first.
+- **Database Schema**: Work with the existing Supabase schema. Suggest schema changes if necessary but do not execute migrations unless instructed.
+- **Routing**: 
+  - Check existing routes before adding new ones. Modify existing routes if they match the task's requirements.
+  - When modifying a page or component, ensure compatibility with current routes.
+
+## Code Management
+- **File Structure**: Add or modify files in alignment with the project's current structure.
+- **Type Consistency**: Ensure any code change respects the existing type definitions to avoid type mismatches.
+
+## Workflow
+- **Step-by-Step**: Implement changes in small, reviewable steps. Suggest next steps rather than completing the task in one go.
+- **Error Management**: When encountering errors, suggest solutions that fit within the existing project framework.
+
+## AI Behavior
+- **Project Memory**: Remember the project's state across sessions to provide contextually relevant suggestions.
+- **Clarity in Actions**: Only proceed with actions that are clearly described in the user's request. If in doubt, seek more information before acting.

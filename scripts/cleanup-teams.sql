@@ -13,4 +13,13 @@ ALTER SEQUENCE teams_id_seq RESTART WITH 1;
 ALTER SEQUENCE team_players_id_seq RESTART WITH 1;
 ALTER SEQUENCE team_transfers_id_seq RESTART WITH 1;
 
+-- Delete existing team and its players
+DELETE FROM team_players WHERE team_id IN (
+  SELECT id FROM teams WHERE name = 'UCH stars'
+);
+DELETE FROM teams WHERE name = 'UCH stars';
+
+-- Reset players to be available
+UPDATE players SET is_available = true;
+
 COMMIT; 

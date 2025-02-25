@@ -68,15 +68,46 @@ A Nigerian Fantasy Football platform built with Next.js, Supabase, and Tailwind 
    npm install
    ```
 3. Set up Supabase:
-   - Run migrations
-   - Execute seed script
-   ```bash
-   supabase db reset
-   ```
+   - For production: Use the provided `.env.local` file with production credentials
+   - For local development: Follow the instructions in [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md)
 4. Start development server:
    ```bash
    npm run dev
    ```
+
+## Local Development
+
+For local development, you can use a local Supabase instance to avoid consuming tokens from your production environment. See [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md) for detailed instructions.
+
+Quick start:
+```bash
+# Start the local Supabase instance
+npm run supabase:start
+
+# Switch to local environment
+npm run supabase:local
+
+# Migrate data from production (optional)
+npm run supabase:migrate
+
+# Generate TypeScript types for local database
+npm run update-types:local
+
+# Start the Next.js development server
+npm run dev
+```
+
+## Local Supabase Setup (Completed)
+
+The project now includes a complete local Supabase development environment with:
+
+- Migration scripts to copy data from production to local
+- Seed data for tables that don't exist in production
+- Environment switching between local and production
+- Database schema verification tools
+- Comprehensive documentation in [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md)
+
+This setup allows developers to work locally without consuming production resources or affecting production data.
 
 ## Database Schema
 
