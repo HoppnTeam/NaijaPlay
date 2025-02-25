@@ -1,0 +1,54 @@
+[
+  {
+    "id": "2fd7ddfc-7426-424a-9737-157d5d3a5c16",
+    "name": "NPFL Pro League 2024",
+    "type": "NPFL",
+    "max_teams": 20,
+    "entry_fee": 5000,
+    "total_prize": 1000000,
+    "start_date": "2024-03-01",
+    "end_date": "2024-05-30",
+    "status": "upcoming",
+    "created_by": null,
+    "created_at": "2025-01-19T21:20:27.306368+00:00"
+  },
+  {
+    "id": "15c4bffb-1608-4dab-b017-bb235a775021",
+    "name": "NPFL Rising Stars",
+    "type": "NPFL",
+    "max_teams": 30,
+    "entry_fee": 2000,
+    "total_prize": 500000,
+    "start_date": "2024-03-15",
+    "end_date": "2024-06-15",
+    "status": "upcoming",
+    "created_by": null,
+    "created_at": "2025-01-19T21:20:27.306368+00:00"
+  },
+  {
+    "id": "1a03fc8a-f901-4d4b-9b44-6626aa4ccdfd",
+    "name": "EPL Masters League",
+    "type": "EPL",
+    "max_teams": 16,
+    "entry_fee": 10000,
+    "total_prize": 2000000,
+    "start_date": "2024-03-01",
+    "end_date": "2024-05-30",
+    "status": "upcoming",
+    "created_by": null,
+    "created_at": "2025-01-19T21:20:27.306368+00:00"
+  },
+  {
+    "id": "7d64ee0e-1633-4a75-9ad9-977c53bead20",
+    "name": "EPL Classic League",
+    "type": "EPL",
+    "max_teams": 24,
+    "entry_fee": 5000,
+    "total_prize": 1000000,
+    "start_date": "2024-03-10",
+    "end_date": "2024-06-10",
+    "status": "upcoming",
+    "created_by": null,
+    "created_at": "2025-01-19T21:20:27.306368+00:00"
+  }
+]

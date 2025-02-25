@@ -1,0 +1,16 @@
+[
+  {
+    "id": "61cee661-cbb2-4999-896c-da6f0e1cf830",
+    "email": "thesynthmuse@gmail.com",
+    "role": "user",
+    "created_at": "2025-02-25T01:09:37.424+00:00",
+    "updated_at": "2025-02-25T01:18:11.797+00:00"
+  },
+  {
+    "id": "43402808-d30c-496f-889d-d3bfab179c1c",
+    "email": "okaycee2002@gmail.com",
+    "role": "user",
+    "created_at": "2025-02-25T01:18:28.88+00:00",
+    "updated_at": "2025-02-25T01:18:28.88+00:00"
+  }
+]
