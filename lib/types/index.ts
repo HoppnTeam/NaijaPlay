@@ -42,9 +42,9 @@ export interface Team {
   budget: number
   total_value: number
   captain_id: ID | null
-  formation: string
-  playing_style: string
-  mentality: string
+  formation: '4-3-3' | '4-4-2' | '3-5-2' | '5-3-2' | '4-2-3-1'
+  playing_style: 'Attacking' | 'Defensive' | 'Possession' | 'Counter-Attack'
+  mentality: 'Balanced' | 'Aggressive' | 'Conservative'
   created_at: string
   updated_at: string
   profiles?: {
