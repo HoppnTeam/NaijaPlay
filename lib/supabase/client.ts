@@ -1,29 +1,28 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/database.types'
 
-// Validate environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Determine which environment to use
+const isProduction = process.env.SUPABASE_ENV === 'production'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:', {
-    url: !!supabaseUrl,
-    key: !!supabaseAnonKey
+// Log which environment is being used (only in development and client-side)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  console.log(`Using ${isProduction ? 'PRODUCTION' : 'LOCAL'} Supabase environment (client)`)
+}
+
+// Create a single instance of the Supabase client
+const createClient = () => {
+  return createClientComponentClient<Database>({
+    supabaseUrl: isProduction 
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL_PROD 
+      : process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseKey: isProduction 
+      ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD 
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   })
 }
 
-export function createClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase client cannot be created: Missing environment variables')
-  }
+// Export a singleton instance
+export const supabase = createClient()
 
-  try {
-    return createClientComponentClient<Database>({
-      supabaseUrl,
-      supabaseKey: supabaseAnonKey,
-    })
-  } catch (error) {
-    console.error('Error creating Supabase client:', error)
-    throw new Error('Failed to initialize Supabase client')
-  }
-}
+// Also export the create function for cases where a new instance is needed
+export { createClient }

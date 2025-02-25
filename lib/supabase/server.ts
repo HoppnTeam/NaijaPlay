@@ -1,11 +1,28 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import type { Database } from '../database.types'
+import { createClient } from '@supabase/supabase-js'
 
-// Validate environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+// Determine which environment to use
+const isProduction = process.env.SUPABASE_ENV === 'production'
+
+// Get the appropriate Supabase URL and keys based on the environment
+const supabaseUrl = isProduction 
+  ? process.env.NEXT_PUBLIC_SUPABASE_URL_PROD 
+  : process.env.NEXT_PUBLIC_SUPABASE_URL
+
+const supabaseAnonKey = isProduction 
+  ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD 
+  : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabaseServiceKey = isProduction 
+  ? process.env.SUPABASE_SERVICE_ROLE_KEY_PROD 
+  : process.env.SUPABASE_SERVICE_ROLE_KEY
+
+// Log which environment is being used (only in development)
+if (process.env.NODE_ENV === 'development') {
+  console.log(`Using ${isProduction ? 'PRODUCTION' : 'LOCAL'} Supabase environment (server)`)
+}
 
 // Enhanced validation with detailed error messages
 function validateEnvironmentVariables() {
@@ -13,21 +30,19 @@ function validateEnvironmentVariables() {
   const invalidVars = []
 
   if (!supabaseUrl) {
-    missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
-  } else if (!supabaseUrl.includes('supabase.co')) {
-    invalidVars.push('NEXT_PUBLIC_SUPABASE_URL')
+    missingVars.push(`${isProduction ? 'NEXT_PUBLIC_SUPABASE_URL_PROD' : 'NEXT_PUBLIC_SUPABASE_URL'}`)
   }
 
   if (!supabaseAnonKey) {
-    missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    missingVars.push(`${isProduction ? 'NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'}`)
   } else if (!supabaseAnonKey.startsWith('eyJ')) {
-    invalidVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    invalidVars.push(`${isProduction ? 'NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'}`)
   }
 
   if (!supabaseServiceKey) {
-    missingVars.push('SUPABASE_SERVICE_ROLE_KEY')
+    missingVars.push(`${isProduction ? 'SUPABASE_SERVICE_ROLE_KEY_PROD' : 'SUPABASE_SERVICE_ROLE_KEY'}`)
   } else if (!supabaseServiceKey.startsWith('eyJ')) {
-    invalidVars.push('SUPABASE_SERVICE_ROLE_KEY')
+    invalidVars.push(`${isProduction ? 'SUPABASE_SERVICE_ROLE_KEY_PROD' : 'SUPABASE_SERVICE_ROLE_KEY'}`)
   }
 
   if (missingVars.length > 0) {
@@ -40,11 +55,29 @@ function validateEnvironmentVariables() {
 }
 
 export function createServerClient() {
-  try {
-    validateEnvironmentVariables()
-    return createServerComponentClient<Database>({ cookies })
-  } catch (error) {
-    console.error('Error creating Supabase server client:', error)
-    throw new Error('Failed to initialize Supabase server client. Please check your configuration.')
+  validateEnvironmentVariables()
+  
+  // The createServerComponentClient doesn't accept supabaseUrl and supabaseKey directly
+  // It uses the environment variables by default
+  return createServerComponentClient<Database>({ cookies })
+}
+
+// Create a server client with service role for admin operations
+export function createServiceClient() {
+  validateEnvironmentVariables()
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing required environment variables for service client')
   }
+  
+  return createClient<Database>(
+    supabaseUrl,
+    supabaseServiceKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
 } 

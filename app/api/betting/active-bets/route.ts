@@ -52,6 +52,20 @@ export async function GET(request: Request) {
       )
     }
 
+    // Check if bets table exists
+    const { error: tableCheckError } = await supabase
+      .from('bets')
+      .select('id')
+      .limit(1)
+
+    if (tableCheckError) {
+      console.log('Bets table not found, returning empty results')
+      return NextResponse.json({
+        teamBets: [],
+        playerBets: []
+      })
+    }
+
     // Fetch team bets with team names
     const { data: teamBets, error: teamBetsError } = await supabase
       .from('bets')
@@ -85,10 +99,10 @@ export async function GET(request: Request) {
 
     if (teamBetsError) {
       console.error('Error fetching team bets:', teamBetsError)
-      return NextResponse.json(
-        { error: 'Failed to fetch team bets' },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        teamBets: [],
+        playerBets: []
+      })
     }
 
     // Fetch player bets with player details
@@ -119,14 +133,14 @@ export async function GET(request: Request) {
 
     if (playerBetsError) {
       console.error('Error fetching player bets:', playerBetsError)
-      return NextResponse.json(
-        { error: 'Failed to fetch player bets' },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        teamBets: [],
+        playerBets: []
+      })
     }
 
     // Format the response
-    const formattedTeamBets = (teamBets as TeamBet[]).map(bet => ({
+    const formattedTeamBets = (teamBets || []).map(bet => ({
       id: bet.id,
       type: 'team',
       amount: bet.amount,
@@ -136,22 +150,22 @@ export async function GET(request: Request) {
       details: {
         team1: {
           id: bet.team1_id,
-          name: bet.teams[0]?.name,
+          name: bet.teams?.[0]?.name || 'Unknown Team',
           points: bet.team1_points
         },
         team2: {
           id: bet.team2_id,
-          name: bet.teams[1]?.name,
+          name: bet.teams?.[1]?.name || 'Unknown Team',
           points: bet.team2_points
         },
         selectedTeam: {
           id: bet.selected_team_id,
-          name: bet.teams[2]?.name
+          name: bet.teams?.[2]?.name || 'Unknown Team'
         }
       }
     }))
 
-    const formattedPlayerBets = (playerBets as PlayerBet[]).map(bet => ({
+    const formattedPlayerBets = (playerBets || []).map(bet => ({
       id: bet.id,
       type: 'player',
       amount: bet.amount,
@@ -161,9 +175,9 @@ export async function GET(request: Request) {
       details: {
         player: {
           id: bet.player_id,
-          name: bet.players[0]?.name,
-          team: bet.players[0]?.team,
-          position: bet.players[0]?.position
+          name: bet.players?.[0]?.name || 'Unknown Player',
+          team: bet.players?.[0]?.team || 'Unknown Team',
+          position: bet.players?.[0]?.position || 'Unknown Position'
         },
         metric: bet.metric,
         prediction: bet.prediction,
@@ -178,9 +192,9 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('Error in active-bets route:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      teamBets: [],
+      playerBets: []
+    })
   }
 } 

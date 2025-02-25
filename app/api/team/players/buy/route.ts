@@ -5,19 +5,19 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   try {
     const { teamId, playerId } = await request.json()
-
+    
     const supabase = createRouteHandlerClient({ cookies })
 
     // Verify user owns the team
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (!user || authError) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Start a transaction
+    // Get team details
     const { data: team, error: teamError } = await supabase
       .from('teams')
       .select('*')
@@ -47,22 +47,17 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if team can afford the player
-    if (team.budget < player.current_price) {
-      return NextResponse.json(
-        { error: 'Insufficient funds' },
-        { status: 400 }
-      )
-    }
-
-    // Get current squad size
+    // Check squad size limit
     const { count: squadSize, error: countError } = await supabase
       .from('team_players')
       .select('*', { count: 'exact', head: true })
       .eq('team_id', teamId)
 
     if (countError) {
-      throw countError
+      return NextResponse.json(
+        { error: 'Error checking squad size' },
+        { status: 500 }
+      )
     }
 
     if (squadSize && squadSize >= 25) {
@@ -73,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     // Check if player is already in the team
-    const { data: existingPlayer } = await supabase
+    const { data: existingPlayer, error: existingError } = await supabase
       .from('team_players')
       .select('*')
       .eq('team_id', teamId)
@@ -87,25 +82,45 @@ export async function POST(request: Request) {
       )
     }
 
-    // Perform the transfer
-    const { error: transferError } = await supabase.rpc('buy_player', {
+    // Execute the buy_player function
+    const { data: result, error: transferError } = await supabase.rpc('buy_player', {
       p_team_id: teamId,
       p_player_id: playerId,
       p_price: player.current_price
     })
 
     if (transferError) {
-      throw transferError
+      return NextResponse.json(
+        { error: transferError.message },
+        { status: 500 }
+      )
     }
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: 400 }
+      )
+    }
+
+    // Update team's total value
+    await supabase
+      .from('teams')
+      .update({
+        total_value: supabase.rpc('calculate_team_value', { p_team_id: teamId })
+      })
+      .eq('id', teamId)
 
     return NextResponse.json({
       success: true,
-      message: 'Player successfully added to squad'
+      message: result.message,
+      newBudget: result.new_budget
     })
+
   } catch (error) {
-    console.error('Error buying player:', error)
+    console.error('Error in buy player endpoint:', error)
     return NextResponse.json(
-      { error: 'Failed to complete transfer' },
+      { error: error instanceof Error ? error.message : 'Failed to complete transfer' },
       { status: 500 }
     )
   }

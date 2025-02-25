@@ -39,8 +39,30 @@ export async function GET(request: Request) {
       throw error
     }
 
+    // Transform data to ensure all fields have default values
+    const transformedPlayers = players?.map(player => ({
+      ...player,
+      league: player.league || 'NPFL',
+      base_price: player.base_price || player.current_price,
+      is_available: player.is_available ?? true,
+      minutes_played: player.minutes_played || 0,
+      goals_scored: player.goals_scored || 0,
+      assists: player.assists || 0,
+      clean_sheets: player.clean_sheets || 0,
+      goals_conceded: player.goals_conceded || 0,
+      own_goals: player.own_goals || 0,
+      penalties_saved: player.penalties_saved || 0,
+      penalties_missed: player.penalties_missed || 0,
+      yellow_cards: player.yellow_cards || 0,
+      red_cards: player.red_cards || 0,
+      saves: player.saves || 0,
+      bonus: player.bonus || 0,
+      form_rating: player.form_rating || 0,
+      ownership_percent: player.ownership_percent || 0
+    }))
+
     return NextResponse.json({
-      players,
+      players: transformedPlayers,
       totalPages: Math.ceil((count || 0) / pageSize),
       currentPage: page,
       totalPlayers: count
