@@ -4,12 +4,10 @@ import { useEffect } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useLoadingStore } from '@/lib/store/loading-store'
 import { Progress } from '@/components/ui/progress'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
-export function LoadingProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+function LoadingContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { isGlobalLoading, isRouteChanging, setRouteChanging } = useLoadingStore()
@@ -33,7 +31,21 @@ export function LoadingProvider({
           <Progress value={100} className="w-full h-1" />
         </div>
       )}
-      {children}
     </>
+  )
+}
+
+export function LoadingProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <ErrorBoundary fallback={<div>Error loading progress indicator</div>}>
+      <Suspense fallback={null}>
+        <LoadingContent />
+      </Suspense>
+      {children}
+    </ErrorBoundary>
   )
 } 

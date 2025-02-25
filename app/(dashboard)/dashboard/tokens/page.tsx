@@ -6,6 +6,21 @@ import { PurchaseTokens } from '@/components/tokens/purchase-tokens'
 import { TokenHistory } from '@/components/tokens/token-history'
 import { redirect } from 'next/navigation'
 
+// Helper function to format large numbers with commas
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat('en-NG').format(num)
+}
+
+// Helper function to format currency
+const formatNaira = (amount: number) => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
 export default async function TokensPage() {
   const supabase = createServerComponentClient({ cookies })
   
@@ -29,10 +44,34 @@ export default async function TokensPage() {
   const tokenBalance = error ? 0 : (profile?.tokens ?? 0)
 
   const tokenPackages = [
-    { amount: 100, price: 1000, bonus: 0 },
-    { amount: 500, price: 4500, bonus: 50 },
-    { amount: 1000, price: 8500, bonus: 150 },
-    { amount: 2000, price: 16000, bonus: 400 },
+    { 
+      amount: 100_000_000, 
+      price: 3_000, 
+      bonus: 0,
+      label: '100M Fantasy Money',
+      description: 'Basic Package'
+    },
+    { 
+      amount: 250_000_000, 
+      price: 5_000, 
+      bonus: 0,
+      label: '250M Fantasy Money',
+      description: 'Standard Package'
+    },
+    { 
+      amount: 500_000_000, 
+      price: 8_000, 
+      bonus: 0,
+      label: '500M Fantasy Money',
+      description: 'Premium Package'
+    },
+    { 
+      amount: 1_000_000_000, 
+      price: 15_000, 
+      bonus: 0,
+      label: '1B Fantasy Money',
+      description: 'Ultimate Package'
+    }
   ]
 
   return (
@@ -49,7 +88,7 @@ export default async function TokensPage() {
         <CardContent>
           <div className="flex items-center gap-2">
             <Coins className="h-8 w-8" />
-            <span className="text-4xl font-bold">{tokenBalance.toLocaleString()}</span>
+            <span className="text-4xl font-bold">{formatNumber(tokenBalance)}</span>
           </div>
         </CardContent>
       </Card>

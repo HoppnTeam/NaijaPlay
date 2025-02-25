@@ -42,10 +42,9 @@ export default async function SquadPage({ params }: SquadPageProps) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Squad Management</h2>
       <SquadManagement 
         teamId={team.id}
-        budget={team.budget}
+        budget={200000000}
         players={players}
       />
     </div>

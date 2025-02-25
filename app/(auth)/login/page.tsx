@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import { AlertCircle, Chrome } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { handleError, ErrorMessages } from '@/lib/error-utils'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -195,6 +195,14 @@ export default function LoginPage() {
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }
 

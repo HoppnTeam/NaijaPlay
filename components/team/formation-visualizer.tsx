@@ -13,6 +13,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowUpRight, ArrowDownRight, Shield, Swords } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Star } from 'lucide-react'
 
 interface Player {
   id: string
@@ -21,6 +28,7 @@ interface Player {
   team: string
   current_price: number
   isSubstitute?: boolean
+  is_captain?: boolean
 }
 
 interface FormationVisualizerProps {
@@ -55,27 +63,50 @@ const FORMATIONS: Record<string, FormationData> = {
     name: '4-4-2',
     description: 'Classic balanced formation',
     positions: {
-      Defender: { count: 4, coordinates: [[25, 70], [25, 50], [25, 30], [25, 10]] },
-      Midfielder: { count: 4, coordinates: [[45, 70], [45, 50], [45, 30], [45, 10]] },
-      Forward: { count: 2, coordinates: [[65, 40], [65, 20]] }
+      Goalkeeper: { count: 1, coordinates: [[85, 35]] },
+      Defender: { count: 4, coordinates: [[65, 70], [65, 50], [65, 20], [65, 0]] },
+      Midfielder: { count: 4, coordinates: [[40, 70], [40, 50], [40, 20], [40, 0]] },
+      Forward: { count: 2, coordinates: [[15, 45], [15, 25]] }
     }
   },
   '4-3-3': {
     name: '4-3-3',
     description: 'Attacking formation with wide forwards',
     positions: {
-      Defender: { count: 4, coordinates: [[25, 70], [25, 50], [25, 30], [25, 10]] },
-      Midfielder: { count: 3, coordinates: [[45, 60], [45, 35], [45, 10]] },
-      Forward: { count: 3, coordinates: [[65, 60], [65, 35], [65, 10]] }
+      Goalkeeper: { count: 1, coordinates: [[85, 35]] },
+      Defender: { count: 4, coordinates: [[65, 70], [65, 50], [65, 20], [65, 0]] },
+      Midfielder: { count: 3, coordinates: [[40, 60], [40, 35], [40, 10]] },
+      Forward: { count: 3, coordinates: [[15, 60], [15, 35], [15, 10]] }
     }
   },
   '3-5-2': {
     name: '3-5-2',
     description: 'Midfield control with wing-backs',
     positions: {
-      Defender: { count: 3, coordinates: [[25, 60], [25, 35], [25, 10]] },
-      Midfielder: { count: 5, coordinates: [[45, 80], [45, 60], [45, 35], [45, 10], [45, -10]] },
-      Forward: { count: 2, coordinates: [[65, 40], [65, 20]] }
+      Goalkeeper: { count: 1, coordinates: [[85, 35]] },
+      Defender: { count: 3, coordinates: [[65, 60], [65, 35], [65, 10]] },
+      Midfielder: { count: 5, coordinates: [[40, 80], [40, 60], [40, 35], [40, 10], [40, -10]] },
+      Forward: { count: 2, coordinates: [[15, 45], [15, 25]] }
+    }
+  },
+  '4-2-3-1': {
+    name: '4-2-3-1',
+    description: 'Modern defensive formation with attacking midfielders',
+    positions: {
+      Goalkeeper: { count: 1, coordinates: [[85, 35]] },
+      Defender: { count: 4, coordinates: [[65, 70], [65, 50], [65, 20], [65, 0]] },
+      Midfielder: { count: 5, coordinates: [[50, 70], [50, 0], [30, 60], [30, 35], [30, 10]] },
+      Forward: { count: 1, coordinates: [[15, 35]] }
+    }
+  },
+  '5-3-2': {
+    name: '5-3-2',
+    description: 'Defensive formation with attacking wing-backs',
+    positions: {
+      Goalkeeper: { count: 1, coordinates: [[85, 35]] },
+      Defender: { count: 5, coordinates: [[65, 80], [65, 60], [65, 35], [65, 10], [65, -10]] },
+      Midfielder: { count: 3, coordinates: [[40, 60], [40, 35], [40, 10]] },
+      Forward: { count: 2, coordinates: [[15, 45], [15, 25]] }
     }
   }
 } as const
@@ -153,6 +184,24 @@ export function FormationVisualizer({
     onTacticsChange?.({ playingStyle: style, mentality: newMentality })
   }
 
+  const assignPlayersToPositions = (
+    position: string,
+    coordinates: Coordinate[],
+    availablePlayers: Player[]
+  ) => {
+    const positionPlayers = availablePlayers.filter(p => p.position === position)
+    const result: (Player | null)[] = new Array(coordinates.length).fill(null)
+    
+    // First, try to keep players in their current positions if possible
+    coordinates.forEach((_, index) => {
+      if (positionPlayers[index]) {
+        result[index] = positionPlayers[index]
+      }
+    })
+    
+    return result
+  }
+
   const renderFormationPreview = (formationKey: string) => {
     const formationData = FORMATIONS[formationKey as keyof typeof FORMATIONS]
     if (!formationData) return null
@@ -168,25 +217,60 @@ export function FormationVisualizer({
         </div>
 
         {/* Players */}
-        {Object.entries(formationData.positions).map(([position, data]) => (
-          data.coordinates.map((coord: Coordinate, idx: number) => {
-            const player = starters.find(p => p.position === position)
+        {Object.entries(formationData.positions).map(([position, data]) => {
+          const positionPlayers = assignPlayersToPositions(position, data.coordinates, starters)
+          
+          return data.coordinates.map((coord: Coordinate, idx: number) => {
+            const player = positionPlayers[idx]
             return (
               <div
                 key={`${position}-${idx}`}
                 className="absolute transform -translate-x-1/2 -translate-y-1/2"
                 style={{ left: `${coord[1]}%`, top: `${coord[0]}%` }}
               >
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-8 h-8 rounded-full bg-white border-2 border-primary flex items-center justify-center text-xs font-bold">
-                    {player ? player.name.substring(0, 2) : '?'}
-                  </div>
-                  <span className="text-xs font-medium">{position.substring(0, 3)}</span>
-                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <div className="flex flex-col items-center gap-1">
+                        <div 
+                          className={cn(
+                            "w-8 h-8 rounded-full bg-white border-2 flex items-center justify-center text-xs font-bold",
+                            player ? "border-primary" : "border-gray-300"
+                          )}
+                        >
+                          {player ? (
+                            <div className="flex items-center">
+                              {player.name.substring(0, 2)}
+                              {player.is_captain && (
+                                <Star className="h-3 w-3 ml-0.5 fill-yellow-500" />
+                              )}
+                            </div>
+                          ) : '?'}
+                        </div>
+                        <span className="text-xs font-medium">{position.substring(0, 3)}</span>
+                      </div>
+                    </TooltipTrigger>
+                    {player && (
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p className="font-semibold">{player.name}</p>
+                          <p className="text-sm">{player.team}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Intl.NumberFormat('en-NG', {
+                              style: 'currency',
+                              currency: 'NGN',
+                              minimumFractionDigits: 0,
+                            }).format(player.current_price)}
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             )
           })
-        ))}
+        })}
       </div>
     )
   }

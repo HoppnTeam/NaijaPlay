@@ -4,12 +4,22 @@ import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Coins } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
 interface TokenPackage {
   amount: number
   price: number
   bonus: number
+  label: string
+  description: string
 }
 
 interface PurchaseTokensProps {
@@ -17,91 +27,121 @@ interface PurchaseTokensProps {
 }
 
 export function PurchaseTokens({ tokenPackages }: PurchaseTokensProps) {
-  const [isLoading, setIsLoading] = useState<number | null>(null)
+  const [processingPackage, setProcessingPackage] = useState<number | null>(null)
   const { toast } = useToast()
   const supabase = createClientComponentClient()
 
+  const formatNaira = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-NG').format(num)
+  }
+
   const handlePurchase = async (pkg: TokenPackage) => {
     try {
-      setIsLoading(pkg.amount)
+      setProcessingPackage(pkg.amount)
 
-      // Here you would integrate with your payment provider
-      // For now, we'll just simulate a successful purchase
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
+      // Get the current user
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not found')
-
-      // Start a transaction
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('tokens')
-        .eq('id', user.id)
-        .single()
-
-      const currentBalance = profile?.tokens || 0
-      const newBalance = currentBalance + pkg.amount + pkg.bonus
-
-      // Update user's token balance
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ tokens: newBalance })
-        .eq('id', user.id)
-
-      if (updateError) throw updateError
-
-      // Record the transaction
-      const { error: transactionError } = await supabase
-        .from('token_transactions')
-        .insert({
-          user_id: user.id,
-          amount: pkg.amount + pkg.bonus,
-          type: 'purchase',
-          description: `Purchased ${pkg.amount} tokens + ${pkg.bonus} bonus tokens`
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to purchase tokens",
+          variant: "destructive"
         })
+        return
+      }
 
-      if (transactionError) throw transactionError
+      // Convert amount to kobo (Paystack requires amount in kobo)
+      const amountInKobo = pkg.price * 100
 
-      toast({
-        title: "Purchase successful!",
-        description: `${pkg.amount + pkg.bonus} tokens have been added to your account.`,
+      // Initialize payment with Paystack
+      const response = await fetch('/api/wallet/topup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amountInKobo, // Send amount in kobo
+          tokens: pkg.amount,
+          package_name: pkg.label,
+          email: user.email // Required by Paystack
+        }),
       })
 
-      // Refresh the page to show updated balance
-      window.location.reload()
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initialize payment')
+      }
+
+      if (!data.authorization_url) {
+        throw new Error('No payment URL received')
+      }
+
+      // Log the response for debugging
+      console.log('Payment initialization response:', data)
+
+      // Redirect to Paystack payment page
+      window.location.href = data.authorization_url
+
     } catch (error) {
       console.error('Error purchasing tokens:', error)
       toast({
         title: "Purchase failed",
-        description: "There was an error processing your purchase. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to process purchase",
         variant: "destructive",
       })
-    } finally {
-      setIsLoading(null)
+      setProcessingPackage(null) // Reset processing state on error
     }
   }
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       {tokenPackages.map((pkg) => (
-        <Button
+        <Card 
           key={pkg.amount}
-          onClick={() => handlePurchase(pkg)}
-          disabled={isLoading !== null}
-          className="h-auto py-6 flex flex-col gap-2"
+          className="relative overflow-hidden"
         >
-          {isLoading === pkg.amount ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <span className="text-lg font-bold">{pkg.amount} Tokens</span>
-              {pkg.bonus > 0 && (
-                <span className="text-sm text-muted">+{pkg.bonus} Bonus</span>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Coins className="h-5 w-5" />
+              {pkg.label}
+            </CardTitle>
+            <CardDescription>{pkg.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="text-3xl font-bold">{formatNaira(pkg.price)}</div>
+              <div className="text-sm text-muted-foreground">
+                {formatNumber(pkg.amount)} tokens
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              className="w-full"
+              onClick={() => handlePurchase(pkg)}
+              disabled={processingPackage === pkg.amount}
+            >
+              {processingPackage === pkg.amount ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Purchase'
               )}
-              <span className="text-lg font-bold">₦{pkg.price.toLocaleString()}</span>
-            </>
-          )}
-        </Button>
+            </Button>
+          </CardFooter>
+        </Card>
       ))}
     </div>
   )

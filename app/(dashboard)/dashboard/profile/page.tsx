@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Trophy, Medal, Star, Bell, Settings2, Upload, X, Camera } from 'lucide-react'
+import { Trophy, Medal, Star, Bell, Settings2, Upload, X, Camera, Wallet, User, Settings } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import type { Database } from '@/lib/database.types'
-import { handleError, ErrorMessages } from '@/lib/error-utils'
+import { handleError } from '@/lib/error-utils'
+import { WalletCard } from "@/components/wallet/wallet-card"
 
 interface Achievement {
   id: string
@@ -32,8 +33,9 @@ interface NotificationPreference {
 
 interface UserProfile {
   id: string
-  full_name: string
-  username: string
+  full_name: string | null
+  username: string | null
+  email: string
   avatar_url: string | null
   bio: string | null
   favorite_team: string | null
@@ -56,8 +58,16 @@ export default function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
+      setIsLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Please log in to view your profile",
+          variant: "destructive"
+        })
+        return
+      }
 
       const { data, error } = await supabase
         .from('profiles')
@@ -76,13 +86,37 @@ export default function ProfilePage() {
         
         setAvatarPreview(avatarData.publicUrl)
       }
+
+      // Set default notification preferences if not set
+      const notification_preferences = data.notification_preferences || {
+        league_updates: true,
+        team_performance: true,
+        transfer_deadlines: true,
+        match_reminders: true,
+        achievement_alerts: true
+      }
       
-      setProfile(data)
-    } catch (error) {
-      handleError(error, {
-        title: "Failed to Load Profile",
-        context: "Profile Page"
+      // Combine auth user data with profile data
+      setProfile({
+        id: data.id,
+        full_name: data.full_name,
+        username: data.username,
+        email: user.email || '',
+        avatar_url: data.avatar_url,
+        bio: data.bio,
+        favorite_team: data.favorite_team,
+        notifications_enabled: data.notifications_enabled || false,
+        notification_preferences
       })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load profile data",
+        variant: "destructive"
+      })
+      console.error('Error fetching profile:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -90,8 +124,10 @@ export default function ProfilePage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        handleError(ErrorMessages.AUTH.NOT_LOGGED_IN, {
-          context: "Achievements"
+        toast({
+          title: "Error",
+          description: "Please log in to view achievements",
+          variant: "destructive"
         })
         return
       }
@@ -107,12 +143,12 @@ export default function ProfilePage() {
         earned_at: ua.earned_at
       })) || [])
     } catch (error) {
-      handleError(error, {
-        title: "Failed to Load Achievements",
-        context: "Achievements"
+      toast({
+        title: "Error",
+        description: "Failed to load achievements",
+        variant: "destructive"
       })
-    } finally {
-      setIsLoading(false)
+      console.error('Error fetching achievements:', error)
     }
   }
 
@@ -120,8 +156,10 @@ export default function ProfilePage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        handleError(ErrorMessages.AUTH.NOT_LOGGED_IN, {
-          context: "Profile Update"
+        toast({
+          title: "Error",
+          description: "Please log in to update your profile",
+          variant: "destructive"
         })
         return
       }
@@ -139,10 +177,12 @@ export default function ProfilePage() {
         description: "Profile updated successfully!",
       })
     } catch (error) {
-      handleError(error, {
-        title: "Profile Update Failed",
-        context: "Profile"
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive"
       })
+      console.error('Error updating profile:', error)
     }
   }
 
@@ -151,10 +191,10 @@ export default function ProfilePage() {
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      handleError(ErrorMessages.VALIDATION.INVALID_FORMAT("File size"), {
-        title: "Invalid File",
-        context: "Avatar Upload",
-        shouldLog: false
+      toast({
+        title: "Error",
+        description: "File size must be less than 2MB",
+        variant: "destructive"
       })
       return
     }
@@ -262,6 +302,18 @@ export default function ProfilePage() {
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notifications
+          </TabsTrigger>
+          <TabsTrigger value="wallet" className="flex items-center gap-2">
+            <Wallet className="h-4 w-4" />
+            Wallet
+          </TabsTrigger>
+          <TabsTrigger value="account" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Account
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Settings
           </TabsTrigger>
         </TabsList>
 
@@ -493,6 +545,42 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="wallet">
+          <div className="space-y-4">
+            <WalletCard />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="account">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Username</label>
+                <p className="text-muted-foreground">{profile?.username}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Email</label>
+                <p className="text-muted-foreground">{profile?.email}</p>
+              </div>
+              <Button variant="outline">Edit Profile</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader>
+              <CardTitle>Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Account settings coming soon...</p>
             </CardContent>
           </Card>
         </TabsContent>

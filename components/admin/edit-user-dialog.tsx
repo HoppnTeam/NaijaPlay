@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -18,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 
 type User = {
   id: string
@@ -37,7 +39,7 @@ export function EditUserDialog({ user, isOpen, onClose, onUserUpdated }: EditUse
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-
+  const { toast } = useToast()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
@@ -51,37 +53,48 @@ export function EditUserDialog({ user, isOpen, onClose, onUserUpdated }: EditUse
     if (!user) return
 
     setIsLoading(true)
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ email, role })
-      .eq('id', user.id)
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ email, role })
+        .eq('id', user.id)
 
-    if (updateError) {
-      toast({
-        title: "Error",
-        description: "Failed to update user. Please try again.",
-        variant: "destructive",
-      })
-    } else {
+      if (updateError) {
+        throw updateError
+      }
+
       toast({
         title: "Success",
         description: "User updated successfully.",
       })
       onUserUpdated()
       onClose()
+    } catch (error) {
+      console.error('Error updating user:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update user. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
+
+  if (!isOpen) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
+          <DialogDescription>
+            Make changes to the user's profile here.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label htmlFor="email">Email</label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
@@ -90,9 +103,9 @@ export function EditUserDialog({ user, isOpen, onClose, onUserUpdated }: EditUse
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="role">Role</label>
+            <Label htmlFor="role">Role</Label>
             <Select value={role} onValueChange={setRole}>
-              <SelectTrigger>
+              <SelectTrigger id="role">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
@@ -103,14 +116,9 @@ export function EditUserDialog({ user, isOpen, onClose, onUserUpdated }: EditUse
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline<cut_off_point>
-div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline
-</cut_off_point>
-
-" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={handleUpdateUser} disabled={isLoading}>
             {isLoading ? 'Updating...' : 'Update User'}
           </Button>
