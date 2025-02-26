@@ -1,5 +1,5 @@
 import { API_FOOTBALL_CONFIG } from './config'
-import { Fixture } from './types'
+import { Fixture, TeamStatistics, LeagueStanding, Player } from './types'
 
 class ApiFootballClient {
   private apiKey: string
@@ -65,6 +65,54 @@ class ApiFootballClient {
       )
     } catch (error) {
       console.error('Failed to fetch matches:', error)
+      return []
+    }
+  }
+  
+  // Get team statistics
+  async getTeamStatistics(teamId: number, leagueId: number): Promise<TeamStatistics | null> {
+    const season = this.getCurrentSeason()
+    
+    try {
+      const stats = await this.makeRequest<TeamStatistics>(
+        `/teams/statistics?team=${teamId}&league=${leagueId}&season=${season}`
+      )
+      
+      return stats.length > 0 ? stats[0] : null
+    } catch (error) {
+      console.error(`Failed to fetch team statistics for team ${teamId}:`, error)
+      return null
+    }
+  }
+  
+  // Get league standings
+  async getLeagueStandings(leagueId: number): Promise<LeagueStanding | null> {
+    const season = this.getCurrentSeason()
+    
+    try {
+      const standings = await this.makeRequest<LeagueStanding>(
+        `/standings?league=${leagueId}&season=${season}`
+      )
+      
+      return standings.length > 0 ? standings[0] : null
+    } catch (error) {
+      console.error(`Failed to fetch standings for league ${leagueId}:`, error)
+      return null
+    }
+  }
+  
+  // Get player statistics
+  async getPlayerStatistics(teamId: number, leagueId: number): Promise<Player[]> {
+    const season = this.getCurrentSeason()
+    
+    try {
+      const players = await this.makeRequest<Player>(
+        `/players?team=${teamId}&league=${leagueId}&season=${season}`
+      )
+      
+      return players
+    } catch (error) {
+      console.error(`Failed to fetch player statistics for team ${teamId}:`, error)
       return []
     }
   }

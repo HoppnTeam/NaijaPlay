@@ -1,41 +1,52 @@
 import { createId } from '@paralleldrive/cuid2'
 
-export interface Player {
+/**
+ * Match Engine
+ * 
+ * This class handles the simulation of football matches between two teams.
+ * It generates realistic match events and player performances based on team and player attributes.
+ */
+
+interface Player {
   id: string
   name: string
   position: string
-  attack: number
-  defense: number
-  speed: number
-  stamina: number
-  form: number
+  attributes: {
+    pace: number
+    shooting: number
+    passing: number
+    dribbling: number
+    defending: number
+    physical: number
+  }
 }
 
-export interface Team {
+interface Team {
   id: string
   name: string
   players: Player[]
-  formation: string
 }
 
-export interface MatchEvent {
-  id: string
-  type: 'goal' | 'assist' | 'save' | 'tackle' | 'foul' | 'card'
+interface MatchEvent {
   minute: number
-  playerId: string
+  type: string
   teamId: string
-  description: string
+  playerId: string
+  playerName: string
+  assistPlayerId?: string
+  assistPlayerName?: string
+  detail?: string
 }
 
-export interface PlayerPerformance {
+interface PlayerPerformance {
   playerId: string
+  playerName: string
+  teamId: string
+  position: string
   rating: number
   goals: number
   assists: number
-  saves: number
-  tackles: number
-  fouls: number
-  cards: number
+  minutesPlayed: number
 }
 
 export interface MatchResult {
@@ -50,199 +61,327 @@ export interface MatchResult {
 }
 
 export class MatchEngine {
-  private calculatePlayerMatchRating(
-    player: Player,
-    events: MatchEvent[]
-  ): number {
-    let baseRating = 6.0 // Base rating for all players
-
-    // Calculate event-based rating adjustments
-    const playerEvents = events.filter(e => e.playerId === player.id)
+  private homeTeam: Team
+  private awayTeam: Team
+  private events: MatchEvent[] = []
+  private currentMinute: number = 0
+  private homeScore: number = 0
+  private awayScore: number = 0
+  private playerPerformances: Map<string, PlayerPerformance> = new Map()
+  
+  constructor(homeTeam: Team, awayTeam: Team) {
+    this.homeTeam = homeTeam
+    this.awayTeam = awayTeam
     
-    for (const event of playerEvents) {
-      switch (event.type) {
-        case 'goal':
-          baseRating += 1.5
-          break
-        case 'assist':
-          baseRating += 1.0
-          break
-        case 'save':
-          baseRating += 0.5
-          break
-        case 'tackle':
-          baseRating += 0.3
-          break
-        case 'foul':
-          baseRating -= 0.3
-          break
-        case 'card':
-          baseRating -= 0.5
-          break
-      }
-    }
-
-    // Factor in player attributes
-    const attributeBonus = (
-      (player.attack + player.defense + player.speed + player.stamina) / 400
-    ) * player.form
-
-    baseRating += attributeBonus
-
-    // Clamp rating between 1 and 10
-    return Math.max(1, Math.min(10, baseRating))
+    // Initialize player performances
+    this.initializePlayerPerformances()
   }
-
-  public generateMatchEvent(
-    minute: number,
-    teams: { home: Team; away: Team }
-  ): MatchEvent | null {
-    const eventTypes = ['goal', 'assist', 'save', 'tackle', 'foul', 'card']
-    const eventProbabilities = [0.1, 0.1, 0.15, 0.2, 0.1, 0.05] // Probabilities for each event type
-
-    // Determine if an event occurs
-    if (Math.random() > 0.3) return null // 30% chance of event per minute
-
-    // Select event type based on probabilities
-    const random = Math.random()
-    let cumulativeProbability = 0
-    let selectedEventType = eventTypes[0]
-
-    for (let i = 0; i < eventTypes.length; i++) {
-      cumulativeProbability += eventProbabilities[i]
-      if (random <= cumulativeProbability) {
-        selectedEventType = eventTypes[i]
-        break
-      }
-    }
-
-    // Select team and player based on event type and attributes
-    const isHomeTeam = this.determineEventTeam(selectedEventType as MatchEvent['type'], teams)
-    const team = isHomeTeam ? teams.home : teams.away
-    const player = this.selectPlayerForEvent(selectedEventType as MatchEvent['type'], team)
-
-    return {
-      id: createId(),
-      type: selectedEventType as MatchEvent['type'],
-      minute,
-      playerId: player.id,
-      teamId: team.id,
-      description: this.generateEventDescription(selectedEventType as MatchEvent['type'], player.name, team.name)
-    }
-  }
-
-  private determineEventTeam(eventType: MatchEvent['type'], teams: { home: Team; away: Team }): boolean {
-    const homeTeamStrength = teams.home.players.reduce((sum, p) => sum + p.attack + p.defense, 0)
-    const awayTeamStrength = teams.away.players.reduce((sum, p) => sum + p.attack + p.defense, 0)
-    const totalStrength = homeTeamStrength + awayTeamStrength
+  
+  private initializePlayerPerformances() {
+    // Initialize home team player performances
+    this.homeTeam.players.forEach(player => {
+      this.playerPerformances.set(player.id, {
+        playerId: player.id,
+        playerName: player.name,
+        teamId: this.homeTeam.id,
+        position: player.position,
+        rating: 6.0, // Base rating
+        goals: 0,
+        assists: 0,
+        minutesPlayed: 0
+      })
+    })
     
-    const random = Math.random()
-    return random <= (homeTeamStrength / totalStrength)
+    // Initialize away team player performances
+    this.awayTeam.players.forEach(player => {
+      this.playerPerformances.set(player.id, {
+        playerId: player.id,
+        playerName: player.name,
+        teamId: this.awayTeam.id,
+        position: player.position,
+        rating: 6.0, // Base rating
+        goals: 0,
+        assists: 0,
+        minutesPlayed: 0
+      })
+    })
   }
-
-  private selectPlayerForEvent(eventType: MatchEvent['type'], team: Team): Player {
-    const players = team.players
-    let weights: number[] = []
-
-    switch (eventType) {
-      case 'goal':
-        weights = players.map(p => p.position === 'FWD' ? p.attack * 2 : p.attack)
-        break
-      case 'assist':
-        weights = players.map(p => p.position === 'MID' ? p.attack * 1.5 : p.attack)
-        break
-      case 'save':
-        weights = players.map(p => p.position === 'GK' ? p.defense * 3 : 0)
-        break
-      case 'tackle':
-        weights = players.map(p => p.defense)
-        break
-      default:
-        weights = players.map(() => 1) // Equal probability for other events
-    }
-
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0)
-    let random = Math.random() * totalWeight
-    let selectedIndex = 0
-
-    for (let i = 0; i < weights.length; i++) {
-      random -= weights[i]
-      if (random <= 0) {
-        selectedIndex = i
-        break
-      }
-    }
-
-    return players[selectedIndex]
-  }
-
-  private generateEventDescription(
-    type: MatchEvent['type'],
-    playerName: string,
-    teamName: string
-  ): string {
-    switch (type) {
-      case 'goal':
-        return `GOAL! ${playerName} scores for ${teamName}!`
-      case 'assist':
-        return `Beautiful assist by ${playerName} for ${teamName}!`
-      case 'save':
-        return `Great save by ${playerName} of ${teamName}!`
-      case 'tackle':
-        return `Successful tackle by ${playerName} (${teamName})`
-      case 'foul':
-        return `Foul committed by ${playerName} (${teamName})`
-      case 'card':
-        return `${playerName} (${teamName}) receives a card`
-      default:
-        return `Event involving ${playerName} of ${teamName}`
-    }
-  }
-
-  public simulateMatch(homeTeam: Team, awayTeam: Team): MatchResult {
-    const events: MatchEvent[] = []
-    let homeScore = 0
-    let awayScore = 0
-
-    // Simulate 90 minutes
-    for (let minute = 1; minute <= 90; minute++) {
-      const event = this.generateMatchEvent(minute, { home: homeTeam, away: awayTeam })
+  
+  /**
+   * Simulate a single minute of the match
+   * @returns The events that occurred in this minute
+   */
+  simulateMinute(): MatchEvent[] {
+    this.currentMinute++
+    const minuteEvents: MatchEvent[] = []
+    
+    // Update player minutes played
+    this.updateMinutesPlayed()
+    
+    // Determine if any events occur in this minute
+    if (this.shouldEventOccur()) {
+      const event = this.generateEvent()
       if (event) {
-        events.push(event)
-        if (event.type === 'goal') {
-          if (event.teamId === homeTeam.id) homeScore++
-          else awayScore++
+        minuteEvents.push(event)
+        this.events.push(event)
+        
+        // Update scores and player stats based on the event
+        this.processEvent(event)
+      }
+    }
+    
+    return minuteEvents
+  }
+  
+  private updateMinutesPlayed() {
+    // Update minutes played for all players
+    this.playerPerformances.forEach(performance => {
+      performance.minutesPlayed += 1
+    })
+  }
+  
+  private shouldEventOccur(): boolean {
+    // About 10-15 events per match is realistic
+    // So roughly 10-15% chance per minute
+    return Math.random() < 0.12
+  }
+  
+  private generateEvent(): MatchEvent | null {
+    // Determine which team gets the event
+    const isHomeTeamEvent = Math.random() < 0.55 // Slight home advantage
+    const team = isHomeTeamEvent ? this.homeTeam : this.awayTeam
+    
+    // Determine event type
+    const eventType = this.determineEventType()
+    
+    // Select a player for the event
+    const player = this.selectPlayerForEvent(team, eventType)
+    if (!player) return null
+    
+    // Create the event
+    const event: MatchEvent = {
+      minute: this.currentMinute,
+      type: eventType,
+      teamId: team.id,
+      playerId: player.id,
+      playerName: player.name
+    }
+    
+    // Add assist for goals
+    if (eventType === 'goal') {
+      const assist = this.selectPlayerForAssist(team, player.id)
+      if (assist) {
+        event.assistPlayerId = assist.id
+        event.assistPlayerName = assist.name
+      }
+      
+      // Add goal details
+      event.detail = this.generateGoalDetail()
+    } else if (eventType === 'card') {
+      // Add card details (yellow or red)
+      event.detail = Math.random() < 0.2 ? 'red' : 'yellow'
+    }
+    
+    return event
+  }
+  
+  private determineEventType(): string {
+    const rand = Math.random()
+    
+    if (rand < 0.6) {
+      return 'goal' // 60% chance of a goal
+    } else if (rand < 0.95) {
+      return 'card' // 35% chance of a card
+    } else {
+      return 'substitution' // 5% chance of a substitution
+    }
+  }
+  
+  private selectPlayerForEvent(team: Team, eventType: string): Player | null {
+    if (team.players.length === 0) return null
+    
+    // Filter players by position based on event type
+    let eligiblePlayers: Player[] = []
+    
+    if (eventType === 'goal') {
+      // Forwards and midfielders more likely to score
+      const forwards = team.players.filter(p => p.position === 'Forward')
+      const midfielders = team.players.filter(p => p.position === 'Midfielder')
+      const defenders = team.players.filter(p => p.position === 'Defender')
+      
+      // Weight by position and shooting attribute
+      if (Math.random() < 0.6 && forwards.length > 0) {
+        eligiblePlayers = forwards
+      } else if (Math.random() < 0.7 && midfielders.length > 0) {
+        eligiblePlayers = midfielders
+      } else if (defenders.length > 0) {
+        eligiblePlayers = defenders
+      } else {
+        eligiblePlayers = team.players
+      }
+      
+      // Sort by shooting attribute
+      eligiblePlayers.sort((a, b) => 
+        (b.attributes?.shooting || 50) - (a.attributes?.shooting || 50)
+      )
+      
+      // Take top 3 or all if less than 3
+      eligiblePlayers = eligiblePlayers.slice(0, Math.min(3, eligiblePlayers.length))
+    } else if (eventType === 'card') {
+      // Defenders more likely to get cards
+      const defenders = team.players.filter(p => p.position === 'Defender')
+      const midfielders = team.players.filter(p => p.position === 'Midfielder')
+      
+      if (Math.random() < 0.7 && defenders.length > 0) {
+        eligiblePlayers = defenders
+      } else if (Math.random() < 0.8 && midfielders.length > 0) {
+        eligiblePlayers = midfielders
+      } else {
+        eligiblePlayers = team.players.filter(p => p.position !== 'Goalkeeper')
+      }
+    } else {
+      // For substitutions, any outfield player
+      eligiblePlayers = team.players.filter(p => p.position !== 'Goalkeeper')
+    }
+    
+    if (eligiblePlayers.length === 0) {
+      eligiblePlayers = team.players
+    }
+    
+    // Randomly select from eligible players
+    return eligiblePlayers[Math.floor(Math.random() * eligiblePlayers.length)]
+  }
+  
+  private selectPlayerForAssist(team: Team, scorerId: string): Player | null {
+    // Filter out the scorer
+    const eligiblePlayers = team.players.filter(p => p.id !== scorerId && p.position !== 'Goalkeeper')
+    
+    if (eligiblePlayers.length === 0) return null
+    
+    // Midfielders more likely to assist
+    const midfielders = eligiblePlayers.filter(p => p.position === 'Midfielder')
+    const forwards = eligiblePlayers.filter(p => p.position === 'Forward')
+    
+    let assistPool: Player[] = []
+    
+    if (Math.random() < 0.6 && midfielders.length > 0) {
+      assistPool = midfielders
+    } else if (Math.random() < 0.8 && forwards.length > 0) {
+      assistPool = forwards
+    } else {
+      assistPool = eligiblePlayers
+    }
+    
+    // Sort by passing attribute
+    assistPool.sort((a, b) => 
+      (b.attributes?.passing || 50) - (a.attributes?.passing || 50)
+    )
+    
+    // Take top 3 or all if less than 3
+    assistPool = assistPool.slice(0, Math.min(3, assistPool.length))
+    
+    // 30% chance of no assist
+    if (Math.random() < 0.3) return null
+    
+    return assistPool[Math.floor(Math.random() * assistPool.length)]
+  }
+  
+  private generateGoalDetail(): string {
+    const goalTypes = [
+      'header',
+      'long shot',
+      'penalty',
+      'free kick',
+      'tap in',
+      'volley',
+      'solo run',
+      'counter attack',
+      'rebound'
+    ]
+    
+    return goalTypes[Math.floor(Math.random() * goalTypes.length)]
+  }
+  
+  private processEvent(event: MatchEvent) {
+    // Update scores
+    if (event.type === 'goal') {
+      if (event.teamId === this.homeTeam.id) {
+        this.homeScore++
+      } else {
+        this.awayScore++
+      }
+      
+      // Update player stats
+      const scorer = this.playerPerformances.get(event.playerId)
+      if (scorer) {
+        scorer.goals += 1
+        scorer.rating += 0.5 // Boost rating for scoring
+      }
+      
+      if (event.assistPlayerId) {
+        const assister = this.playerPerformances.get(event.assistPlayerId)
+        if (assister) {
+          assister.assists += 1
+          assister.rating += 0.3 // Boost rating for assisting
         }
       }
-    }
-
-    // Calculate player performances
-    const playerPerformances: PlayerPerformance[] = [
-      ...homeTeam.players,
-      ...awayTeam.players
-    ].map(player => {
-      const playerEvents = events.filter(e => e.playerId === player.id)
-      return {
-        playerId: player.id,
-        rating: this.calculatePlayerMatchRating(player, playerEvents),
-        goals: playerEvents.filter(e => e.type === 'goal').length,
-        assists: playerEvents.filter(e => e.type === 'assist').length,
-        saves: playerEvents.filter(e => e.type === 'save').length,
-        tackles: playerEvents.filter(e => e.type === 'tackle').length,
-        fouls: playerEvents.filter(e => e.type === 'foul').length,
-        cards: playerEvents.filter(e => e.type === 'card').length
+    } else if (event.type === 'card') {
+      // Decrease player rating for cards
+      const player = this.playerPerformances.get(event.playerId)
+      if (player) {
+        player.rating -= event.detail === 'red' ? 1.0 : 0.3
       }
-    })
-
-    return {
-      id: createId(),
-      homeTeamId: homeTeam.id,
-      awayTeamId: awayTeam.id,
-      homeScore,
-      awayScore,
-      events,
-      playerPerformances,
-      date: new Date()
     }
+  }
+  
+  /**
+   * Get the current match state
+   */
+  getMatchState() {
+    return {
+      currentMinute: this.currentMinute,
+      homeScore: this.homeScore,
+      awayScore: this.awayScore,
+      events: this.events,
+      playerPerformances: Array.from(this.playerPerformances.values())
+        .sort((a, b) => b.rating - a.rating) // Sort by rating
+    }
+  }
+  
+  /**
+   * Finalize player ratings at the end of the match
+   */
+  finalizePlayerRatings() {
+    this.playerPerformances.forEach(performance => {
+      // Adjust ratings based on goals, assists, and team performance
+      if (performance.teamId === this.homeTeam.id) {
+        // Bonus for winning team
+        if (this.homeScore > this.awayScore) {
+          performance.rating += 0.3
+        } else if (this.homeScore < this.awayScore) {
+          performance.rating -= 0.2
+        }
+      } else {
+        // Away team
+        if (this.awayScore > this.homeScore) {
+          performance.rating += 0.4 // Extra bonus for away win
+        } else if (this.awayScore < this.homeScore) {
+          performance.rating -= 0.2
+        }
+      }
+      
+      // Bonus for clean sheet (defenders and goalkeepers)
+      if ((performance.position === 'Defender' || performance.position === 'Goalkeeper') &&
+          ((performance.teamId === this.homeTeam.id && this.awayScore === 0) ||
+           (performance.teamId === this.awayTeam.id && this.homeScore === 0))) {
+        performance.rating += 0.5
+      }
+      
+      // Ensure ratings are within bounds (1-10)
+      performance.rating = Math.max(1, Math.min(10, performance.rating))
+      
+      // Round to 1 decimal place
+      performance.rating = Math.round(performance.rating * 10) / 10
+    })
   }
 } 

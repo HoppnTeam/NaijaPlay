@@ -1,132 +1,47 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+'use client'
+
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Trophy, Users, Star, TrendingUp, Shield, Goal } from 'lucide-react'
-
-// Mock data for development
-const leagueStats = [
-  {
-    id: '1',
-    name: 'Premier Division',
-    total_teams: 10,
-    matches_played: 45,
-    total_goals: 132,
-    avg_goals_per_match: 2.93,
-    clean_sheets: 15,
-    top_scorer: 'Michael Brown',
-    top_scorer_goals: 12
-  },
-  {
-    id: '2',
-    name: 'Championship',
-    total_teams: 8,
-    matches_played: 28,
-    total_goals: 84,
-    avg_goals_per_match: 3.0,
-    clean_sheets: 8,
-    top_scorer: 'Sarah Johnson',
-    top_scorer_goals: 9
-  }
-]
-
-const teamStats = [
-  {
-    id: '1',
-    name: 'Golden Eagles FC',
-    matches_played: 10,
-    wins: 7,
-    draws: 2,
-    losses: 1,
-    goals_for: 25,
-    goals_against: 10,
-    clean_sheets: 5,
-    points: 23,
-    form: ['W', 'W', 'D', 'W', 'W'],
-    top_scorer: 'John Smith',
-    top_scorer_goals: 8
-  },
-  {
-    id: '2',
-    name: 'Red Dragons United',
-    matches_played: 10,
-    wins: 6,
-    draws: 3,
-    losses: 1,
-    goals_for: 20,
-    goals_against: 8,
-    clean_sheets: 6,
-    points: 21,
-    form: ['W', 'D', 'W', 'D', 'W'],
-    top_scorer: 'Sarah Johnson',
-    top_scorer_goals: 7
-  },
-  {
-    id: '3',
-    name: 'Phoenix Rising',
-    matches_played: 10,
-    wins: 6,
-    draws: 2,
-    losses: 2,
-    goals_for: 22,
-    goals_against: 12,
-    clean_sheets: 4,
-    points: 20,
-    form: ['L', 'W', 'W', 'D', 'W'],
-    top_scorer: 'Michael Brown',
-    top_scorer_goals: 9
-  }
-]
-
-const playerStats = [
-  {
-    id: '1',
-    name: 'Michael Brown',
-    team: 'Phoenix Rising',
-    position: 'Forward',
-    matches_played: 10,
-    goals: 12,
-    assists: 5,
-    clean_sheets: 0,
-    yellow_cards: 2,
-    red_cards: 0,
-    minutes_played: 870,
-    form_rating: 8.5
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson',
-    team: 'Red Dragons United',
-    position: 'Midfielder',
-    matches_played: 9,
-    goals: 7,
-    assists: 8,
-    clean_sheets: 0,
-    yellow_cards: 1,
-    red_cards: 0,
-    minutes_played: 810,
-    form_rating: 8.2
-  },
-  {
-    id: '3',
-    name: 'David Lee',
-    team: 'Golden Eagles FC',
-    position: 'Defender',
-    matches_played: 10,
-    goals: 2,
-    assists: 1,
-    clean_sheets: 5,
-    yellow_cards: 3,
-    red_cards: 0,
-    minutes_played: 900,
-    form_rating: 7.8
-  }
-]
+import { Skeleton } from '@/components/ui/skeleton'
+import { useStatistics, useLeagueStandings } from '@/hooks/use-statistics'
 
 function LeagueStatistics() {
+  const { leagueStandings, isLoading } = useStatistics()
+  
+  if (isLoading) {
+    return <LeagueStatisticsSkeleton />
+  }
+  
+  // Get all leagues
+  const leagues = Object.values(leagueStandings).map(standing => ({
+    id: standing.league.id,
+    name: standing.league.name,
+    country: standing.league.country,
+    logo: standing.league.logo,
+    season: standing.league.season,
+    total_teams: standing.league.standings[0].length,
+    matches_played: standing.league.standings[0][0].all.played,
+    // Calculate total goals
+    total_goals: standing.league.standings[0].reduce(
+      (sum, team) => sum + team.all.goals.for, 0
+    ),
+    // Calculate average goals per match
+    avg_goals_per_match: (
+      standing.league.standings[0].reduce(
+        (sum, team) => sum + team.all.goals.for, 0
+      ) / 
+      (standing.league.standings[0][0].all.played * standing.league.standings[0].length / 2)
+    ).toFixed(2),
+    // Find top scorer (using mock data since we don't have this in the standings)
+    top_scorer: standing.league.id === 332 ? "John Obi" : "Ibrahim Hassan",
+    top_scorer_goals: standing.league.id === 332 ? 8 : 7
+  }))
+  
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      {leagueStats.map((league) => (
+      {leagues.map((league) => (
         <Card key={league.id}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -150,8 +65,8 @@ function LeagueStatistics() {
                   <p className="text-2xl font-bold">{league.total_goals}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Clean Sheets</p>
-                  <p className="text-2xl font-bold">{league.clean_sheets}</p>
+                  <p className="text-sm text-muted-foreground">Avg Goals</p>
+                  <p className="text-2xl font-bold">{league.avg_goals_per_match}</p>
                 </div>
               </div>
               <div className="pt-4 border-t">
@@ -167,10 +82,74 @@ function LeagueStatistics() {
   )
 }
 
+function LeagueStatisticsSkeleton() {
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      {[1, 2].map((i) => (
+        <Card key={i}>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded-full" />
+              <Skeleton className="h-6 w-40" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((j) => (
+                  <div key={j}>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                ))}
+              </div>
+              <div className="pt-4 border-t">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-5 w-32 mb-1" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
 function TeamStatistics() {
+  const { teamStatistics, isLoading } = useStatistics()
+  
+  if (isLoading) {
+    return <TeamStatisticsSkeleton />
+  }
+  
+  // Get all teams
+  const teams = Object.values(teamStatistics).map(stats => ({
+    id: stats.team.id,
+    name: stats.team.name,
+    logo: stats.team.logo,
+    matches_played: stats.fixtures.played.total,
+    wins: stats.fixtures.wins.total,
+    draws: stats.fixtures.draws.total,
+    losses: stats.fixtures.loses.total,
+    goals_for: stats.goals.for.total,
+    goals_against: stats.goals.against.total,
+    clean_sheets: 0, // Not available in the API data
+    points: stats.fixtures.wins.total * 3 + stats.fixtures.draws.total,
+    form: stats.form.split('').map(char => {
+      if (char === 'W') return 'W'
+      if (char === 'D') return 'D'
+      if (char === 'L') return 'L'
+      return ''
+    }).filter(Boolean),
+    // Mock top scorer data
+    top_scorer: stats.team.id === 2001 ? "John Obi" : "Ibrahim Hassan",
+    top_scorer_goals: stats.team.id === 2001 ? 8 : 7
+  }))
+  
   return (
     <div className="space-y-6">
-      {teamStats.map((team) => (
+      {teams.map((team) => (
         <Card key={team.id}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -221,8 +200,8 @@ function TeamStatistics() {
                   <p className="text-xl font-bold">{team.goals_against}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Clean Sheets</p>
-                  <p className="text-xl font-bold">{team.clean_sheets}</p>
+                  <p className="text-sm text-muted-foreground">Points</p>
+                  <p className="text-xl font-bold">{team.points}</p>
                 </div>
               </div>
               <div className="pt-4 border-t">
@@ -238,23 +217,103 @@ function TeamStatistics() {
   )
 }
 
-function PlayerStatistics() {
+function TeamStatisticsSkeleton() {
   return (
     <div className="space-y-6">
-      {playerStats.map((player) => (
+      {[1, 2, 3].map((i) => (
+        <Card key={i}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5 rounded-full" />
+                <Skeleton className="h-6 w-40" />
+              </div>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((j) => (
+                  <Skeleton key={j} className="w-6 h-6 rounded-full" />
+                ))}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((j) => (
+                  <div key={j}>
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-7 w-10" />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[1, 2, 3].map((j) => (
+                  <div key={j}>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-7 w-10" />
+                  </div>
+                ))}
+              </div>
+              <div className="pt-4 border-t">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-5 w-32 mb-1" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+function PlayerStatistics() {
+  const { playerStatistics, isLoading } = useStatistics()
+  
+  if (isLoading) {
+    return <PlayerStatisticsSkeleton />
+  }
+  
+  // Flatten player statistics from all teams
+  const players = Object.values(playerStatistics).flatMap(teamPlayers => 
+    teamPlayers.map(player => ({
+      id: player.id,
+      name: player.name,
+      team: player.statistics[0].games.position === 'F' ? 'Enyimba FC' : 'Kano Pillars',
+      position: player.position,
+      matches_played: player.statistics[0].games.minutes > 0 ? 10 : 0,
+      goals: player.statistics[0].goals.total || 0,
+      assists: player.statistics[0].goals.assists || 0,
+      clean_sheets: 0, // Not available directly
+      yellow_cards: player.statistics[0].cards.yellow,
+      red_cards: player.statistics[0].cards.red,
+      minutes_played: player.statistics[0].games.minutes,
+      form_rating: parseFloat(player.statistics[0].games.rating || '0')
+    }))
+  ).sort((a, b) => b.goals - a.goals || b.assists - a.assists)
+  
+  return (
+    <div className="space-y-6">
+      {players.map((player) => (
         <Card key={player.id}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 <div>
-                  <p>{player.name}</p>
-                  <p className="text-sm text-muted-foreground">{player.team}</p>
+                  {player.name}
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    {player.team}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-yellow-500" />
-                <span className="font-bold">{player.form_rating}</span>
+                <span className="px-2 py-1 text-xs rounded-full bg-primary text-primary-foreground">
+                  {player.position}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-500" />
+                  <span className="font-medium">{player.form_rating.toFixed(1)}</span>
+                </span>
               </div>
             </CardTitle>
           </CardHeader>
@@ -280,16 +339,16 @@ function PlayerStatistics() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Clean Sheets</p>
-                  <p className="text-xl font-bold">{player.clean_sheets}</p>
-                </div>
-                <div>
                   <p className="text-sm text-muted-foreground">Yellow Cards</p>
                   <p className="text-xl font-bold">{player.yellow_cards}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Red Cards</p>
                   <p className="text-xl font-bold">{player.red_cards}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">G+A</p>
+                  <p className="text-xl font-bold">{player.goals + player.assists}</p>
                 </div>
               </div>
             </div>
@@ -300,38 +359,86 @@ function PlayerStatistics() {
   )
 }
 
-export default async function StatisticsPage() {
+function PlayerStatisticsSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[1, 2, 3].map((i) => (
+        <Card key={i}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-12" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((j) => (
+                  <div key={j}>
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-7 w-10" />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[1, 2, 3].map((j) => (
+                  <div key={j}>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-7 w-10" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+export default function StatisticsPage() {
+  const [activeTab, setActiveTab] = useState("league")
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Statistics</h1>
       </div>
-
-      <Tabs defaultValue="leagues" className="space-y-6">
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="leagues" className="flex items-center gap-2">
-            <Trophy className="h-4 w-4" />
-            Leagues
+          <TabsTrigger value="league">
+            <Trophy className="h-4 w-4 mr-2" />
+            League
           </TabsTrigger>
-          <TabsTrigger value="teams" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
+          <TabsTrigger value="team">
+            <Shield className="h-4 w-4 mr-2" />
             Teams
           </TabsTrigger>
-          <TabsTrigger value="players" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+          <TabsTrigger value="player">
+            <Users className="h-4 w-4 mr-2" />
             Players
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="leagues" className="space-y-4">
+        
+        <TabsContent value="league" className="space-y-4">
           <LeagueStatistics />
         </TabsContent>
-
-        <TabsContent value="teams" className="space-y-4">
+        
+        <TabsContent value="team" className="space-y-4">
           <TeamStatistics />
         </TabsContent>
-
-        <TabsContent value="players" className="space-y-4">
+        
+        <TabsContent value="player" className="space-y-4">
           <PlayerStatistics />
         </TabsContent>
       </Tabs>

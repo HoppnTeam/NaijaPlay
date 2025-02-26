@@ -1,46 +1,58 @@
-import { useState, useEffect } from 'react'
-import { liveMatchesService } from '@/lib/api-football/services/live-matches'
+import { useState, useEffect, useCallback } from 'react'
 import { Fixture } from '@/lib/api-football/types'
+import { toast } from 'sonner'
 
 export function useLiveMatches() {
   const [matches, setMatches] = useState<Fixture[]>([])
   const [isLive, setIsLive] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [updateInterval, setUpdateInterval] = useState<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
-    // Start updates when component mounts
-    liveMatchesService.startUpdates()
-
-    // Subscribe to updates
-    const unsubscribe = liveMatchesService.subscribe(({ matches, isLive }) => {
-      setMatches(matches)
-      setIsLive(isLive)
-      setIsLoading(false)
-    })
-
-    // Get initial state
-    const { matches: initialMatches, isLive: initialIsLive } = liveMatchesService.getMatches()
-    setMatches(initialMatches)
-    setIsLive(initialIsLive)
-    setIsLoading(false)
-
-    // Cleanup
-    return () => {
-      unsubscribe()
-      liveMatchesService.stopUpdates()
-    }
-  }, [])
-
-  const refresh = async () => {
+  const fetchMatches = useCallback(async () => {
     try {
       setIsLoading(true)
-      await liveMatchesService.refreshMatches()
+      const response = await fetch('/api/matches/live')
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch matches')
+      }
+      
+      const data = await response.json()
+      setMatches(data.matches)
+      setIsLive(data.isLive)
+      setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to refresh matches'))
+      console.error('Error fetching matches:', err)
+      setError(err instanceof Error ? err : new Error('Failed to fetch matches'))
+      toast.error('Failed to fetch matches')
     } finally {
       setIsLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
+    // Fetch matches immediately when component mounts
+    fetchMatches()
+    
+    // Set up interval for live updates
+    const interval = setInterval(() => {
+      fetchMatches()
+    }, 60000) // Update every minute
+    
+    setUpdateInterval(interval)
+    
+    // Clean up interval on unmount
+    return () => {
+      if (updateInterval) {
+        clearInterval(updateInterval)
+      }
+    }
+  }, [fetchMatches])
+
+  const refresh = async () => {
+    await fetchMatches()
   }
 
   return {
@@ -57,50 +69,36 @@ export function useMatchDetails(fixtureId: number) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
-  useEffect(() => {
-    let isMounted = true
-
-    const fetchMatchDetails = async () => {
-      try {
-        setIsLoading(true)
-        const details = await liveMatchesService.getMatchDetails(fixtureId)
-        if (isMounted) {
-          setFixture(details)
-          setError(null)
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err : new Error('Failed to fetch match details'))
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
+  const fetchMatchDetails = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch(`/api/matches/${fixtureId}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch match details')
       }
-    }
-
-    fetchMatchDetails()
-
-    return () => {
-      isMounted = false
+      
+      const data = await response.json()
+      setFixture(data)
+      setError(null)
+    } catch (err) {
+      console.error('Error fetching match details:', err)
+      setError(err instanceof Error ? err : new Error('Failed to fetch match details'))
+      toast.error('Failed to fetch match details')
+    } finally {
+      setIsLoading(false)
     }
   }, [fixtureId])
+
+  useEffect(() => {
+    fetchMatchDetails()
+  }, [fetchMatchDetails])
 
   return {
     fixture,
     isLoading,
     error,
-    refetch: async () => {
-      try {
-        setIsLoading(true)
-        const details = await liveMatchesService.getMatchDetails(fixtureId)
-        setFixture(details)
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch match details'))
-      } finally {
-        setIsLoading(false)
-      }
-    }
+    refetch: fetchMatchDetails
   }
 } 
