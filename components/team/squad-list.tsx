@@ -19,7 +19,8 @@ import {
   Award,
   Percent,
   DollarSign,
-  Users
+  Users,
+  UserCheck
 } from "lucide-react"
 import { useSquadData } from '@/hooks/use-squad-data'
 import { useToast } from "@/components/ui/use-toast"
@@ -187,6 +188,12 @@ function PlayerCard({ teamPlayer }: { teamPlayer: TeamPlayer }) {
                 <Badge variant="secondary" className="w-16 justify-center">
                   {teamPlayer.player.league}
                 </Badge>
+                {teamPlayer.is_starting && (
+                  <Badge variant="default" className="flex items-center gap-1">
+                    <UserCheck className="h-3 w-3" />
+                    <span>Starting</span>
+                  </Badge>
+                )}
               </div>
             </div>
             <PlayerPrice player={teamPlayer.player} />

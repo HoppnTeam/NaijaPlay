@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowUpRight, ArrowDownRight, Shield, Swords } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, Shield, Swords, UserCheck, UserX } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import {
   Tooltip,
@@ -29,6 +29,7 @@ interface Player {
   current_price: number
   isSubstitute?: boolean
   is_captain?: boolean
+  is_vice_captain?: boolean
 }
 
 interface FormationVisualizerProps {
@@ -309,26 +310,63 @@ export function FormationVisualizer({
                 </div>
 
                 <div className="pt-4">
-                  <h3 className="font-semibold mb-2">Substitutes</h3>
-                  <div className="space-y-2">
-                    {substitutes.map(player => (
-                      <div
-                        key={player.id}
-                        className="flex items-center justify-between p-2 bg-muted rounded-lg"
-                      >
-                        <div>
-                          <p className="font-medium">{player.name}</p>
-                          <p className="text-sm text-muted-foreground">{player.position}</p>
-                        </div>
-                        <Badge variant="outline">Sub</Badge>
+                  <h3 className="font-semibold mb-2">Substitutes Bench</h3>
+                  <Card>
+                    <CardHeader className="py-2">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-sm">Bench Players</CardTitle>
+                        <Badge variant="outline">{substitutes.length} Players</Badge>
                       </div>
-                    ))}
-                  </div>
+                    </CardHeader>
+                    <CardContent className="p-2">
+                      {substitutes.length === 0 ? (
+                        <div className="text-center py-4 text-muted-foreground">
+                          <UserX className="h-8 w-8 mx-auto mb-2" />
+                          <p>No substitutes selected</p>
+                          <p className="text-xs">All players are in the starting XI</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                          {substitutes.map(player => (
+                            <div
+                              key={player.id}
+                              className="flex items-center justify-between p-2 bg-muted rounded-lg"
+                            >
+                              <div>
+                                <p className="font-medium">{player.name}</p>
+                                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                                  <span>{player.position}</span>
+                                  <span>•</span>
+                                  <span>{player.team}</span>
+                                  {player.is_captain && (
+                                    <Badge variant="secondary" className="text-xs">C</Badge>
+                                  )}
+                                  {player.is_vice_captain && (
+                                    <Badge variant="secondary" className="text-xs">VC</Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <UserX className="h-3 w-3" />
+                                <span>Sub</span>
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-4">Formation Preview</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold">Formation Preview</h3>
+                  <Badge variant="default" className="flex items-center gap-1">
+                    <UserCheck className="h-3 w-3" />
+                    <span>Starting XI: {starters.length}/11</span>
+                  </Badge>
+                </div>
                 {renderFormationPreview(formation)}
               </div>
             </div>

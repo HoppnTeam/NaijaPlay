@@ -29,7 +29,8 @@ export default function TopupCallbackPage() {
   
   const verifyPayment = async (reference: string) => {
     try {
-      const response = await fetch(`/api/wallet/topup/verify?reference=${reference}`, {
+      // Call the GET endpoint of the topup API to verify the payment
+      const response = await fetch(`/api/wallet/topup?reference=${reference}`, {
         method: 'GET',
       })
       
@@ -37,42 +38,54 @@ export default function TopupCallbackPage() {
       
       if (response.ok && result.success) {
         setStatus('success')
-        setMessage(result.message || 'Payment successful')
-        setTransactionDetails(result.data)
+        setMessage('Your wallet has been topped up successfully')
         
-        // Check if this was a league funding transaction
-        if (result.data?.metadata?.type === 'league_funding' && result.data?.metadata?.league_id) {
-          // Update league prize pool
-          const leagueId = result.data.metadata.league_id
+        // Fetch the transaction details
+        const { data: transaction, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('id', reference)
+          .single()
+        
+        if (error) {
+          console.error('Error fetching transaction details:', error)
+        } else {
+          setTransactionDetails(transaction)
           
-          // Get current league data
-          const { data: leagueData, error: leagueError } = await supabase
-            .from('leagues')
-            .select('additional_prize_amount')
-            .eq('id', leagueId)
-            .single()
-          
-          if (!leagueError && leagueData) {
-            const currentAdditional = leagueData.additional_prize_amount || 0
-            const amount = result.data.amount / 100 // Paystack amount is in kobo
-            const newAdditionalAmount = currentAdditional + amount
+          // Check if this was a league funding transaction
+          if (transaction?.metadata?.type === 'league_funding' && transaction?.metadata?.league_id) {
+            // Update league prize pool
+            const leagueId = transaction.metadata.league_id
             
-            // Update league
-            await supabase
+            // Get current league data
+            const { data: leagueData, error: leagueError } = await supabase
               .from('leagues')
-              .update({
-                additional_prize_amount: newAdditionalAmount,
-                prize_pool_funded: true
-              })
+              .select('additional_prize_amount')
               .eq('id', leagueId)
+              .single()
             
-            // Set redirect path to league management
-            setRedirectPath(`/dashboard/leagues/${leagueId}/manage?tab=prize-funding`)
+            if (!leagueError && leagueData) {
+              const currentAdditional = leagueData.additional_prize_amount || 0
+              const amount = transaction.amount
+              const newAdditionalAmount = currentAdditional + amount
+              
+              // Update league
+              await supabase
+                .from('leagues')
+                .update({
+                  additional_prize_amount: newAdditionalAmount,
+                  prize_pool_funded: true
+                })
+                .eq('id', leagueId)
+              
+              // Set redirect path to league management
+              setRedirectPath(`/dashboard/leagues/${leagueId}/manage?tab=prize-funding`)
+            }
           }
         }
       } else {
         setStatus('error')
-        setMessage(result.message || 'Payment verification failed')
+        setMessage(result.error || 'Payment verification failed')
       }
     } catch (error) {
       console.error('Error verifying payment:', error)
@@ -117,9 +130,9 @@ export default function TopupCallbackPage() {
                 <p className="text-lg font-medium">{message}</p>
                 {transactionDetails && (
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>Amount: {formatNaira(transactionDetails.amount / 100)}</p>
-                    <p>Reference: {transactionDetails.reference}</p>
-                    <p>Date: {new Date(transactionDetails.paid_at).toLocaleString()}</p>
+                    <p>Amount: {formatNaira(transactionDetails.amount)}</p>
+                    <p>Reference: {transactionDetails.id}</p>
+                    <p>Date: {new Date(transactionDetails.created_at).toLocaleString()}</p>
                     {transactionDetails.metadata?.type === 'league_funding' && (
                       <p className="text-green-600 font-medium">League Prize Pool Funding</p>
                     )}

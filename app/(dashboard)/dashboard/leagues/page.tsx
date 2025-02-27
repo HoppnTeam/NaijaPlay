@@ -1,302 +1,275 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trophy, Users, ArrowRight, Plus } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Trophy, Users, Calendar, Plus, Search } from 'lucide-react'
 import Link from 'next/link'
-import { toast } from '@/components/ui/use-toast'
-import type { Database } from '@/lib/database.types'
-import { useRouter } from 'next/navigation'
-import { JoinLeagueDialog } from '@/components/league/join-league-dialog'
-
-interface League {
-  id: string
-  name: string
-  type: 'NPFL' | 'EPL'
-  max_teams: number
-  entry_fee: number
-  total_prize: number
-  start_date: string
-  end_date: string
-  status: 'upcoming' | 'active' | 'completed'
-  created_by: string
-  created_at: string
-}
-
-interface LeagueMember {
-  league_id: string
-  team_id: string
-  user_id: string
-  joined_at: string
-}
 
 export default function LeaguesPage() {
-  const [leagues, setLeagues] = useState<League[]>([])
-  const [myLeagues, setMyLeagues] = useState<LeagueMember[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClientComponentClient<Database>()
-  const router = useRouter()
-  const [selectedLeague, setSelectedLeague] = useState<League | null>(null)
-  const [showJoinDialog, setShowJoinDialog] = useState(false)
-
+  const [leagues, setLeagues] = useState<any[]>([])
+  const [myLeagues, setMyLeagues] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [sortBy, setSortBy] = useState<string>('created_at')
+  const [sortOrder, setSortOrder] = useState<string>('desc')
+  const [activeTab, setActiveTab] = useState<string>('all')
+  
   useEffect(() => {
     fetchLeagues()
-  }, [])
-
+  }, [sortBy, sortOrder])
+  
   const fetchLeagues = async () => {
     try {
       setIsLoading(true)
       
-      // Fetch all leagues with creator information
-      const { data: leaguesData, error: leaguesError } = await supabase
-        .from('leagues')
-        .select(`
-          id, 
-          name, 
-          type, 
-          max_teams, 
-          entry_fee, 
-          total_prize, 
-          start_date, 
-          end_date, 
-          status,
-          created_by,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
-
-      if (leaguesError) {
-        console.error('Error fetching leagues:', leaguesError)
-        toast({
-          title: "Error",
-          description: "Failed to fetch leagues.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // Fetch user's league memberships
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser()
+      
+      // Fetch all leagues
+      const { data: allLeagues, error: allLeaguesError } = await supabase
+        .from('leagues')
+        .select('*, teams(*)')
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+      
+      if (allLeaguesError) throw allLeaguesError
+      
+      setLeagues(allLeagues || [])
+      
+      // Fetch user's leagues if logged in
       if (user) {
-        const { data: memberships, error: membershipError } = await supabase
-    .from('league_members')
-          .select('league_id, team_id, user_id, joined_at')
-          .eq('user_id', user.id)
-
-        if (membershipError) {
-          console.error('Error fetching memberships:', membershipError)
-        } else {
-          setMyLeagues(memberships || [])
-        }
+        const { data: userLeagues, error: userLeaguesError } = await supabase
+          .from('leagues')
+          .select('*, teams(*)')
+          .or(`owner_id.eq.${user.id},teams.user_id.eq.${user.id}`)
+          .order(sortBy, { ascending: sortOrder === 'asc' })
+        
+        if (userLeaguesError) throw userLeaguesError
+        
+        setMyLeagues(userLeagues || [])
       }
-
-      setLeagues(leaguesData || [])
     } catch (error) {
-      console.error('Error in fetchLeagues:', error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
-      })
+      console.error('Error fetching leagues:', error)
     } finally {
       setIsLoading(false)
     }
   }
-
-  const handleJoinLeague = (league: League) => {
-    setSelectedLeague(league)
-    setShowJoinDialog(true)
+  
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
   }
-
-  const handleLeagueClick = (leagueId: string) => {
-    router.push(`/dashboard/leagues/${leagueId}`)
+  
+  const handleSortChange = (value: string) => {
+    const [field, order] = value.split('-')
+    setSortBy(field)
+    setSortOrder(order)
   }
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading leagues...</p>
-        </div>
-      </div>
+  
+  const formatNaira = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount)
+  }
+  
+  const filterLeagues = (leagueList: any[]) => {
+    if (!searchQuery) return leagueList
+    
+    const query = searchQuery.toLowerCase()
+    return leagueList.filter(league => 
+      league.name.toLowerCase().includes(query) || 
+      (league.description && league.description.toLowerCase().includes(query))
     )
   }
-
-  return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Fantasy Leagues</h1>
-        <Link href="/dashboard/leagues/create">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create League
+  
+  const calculateTotalPrize = (league: any) => {
+    const basePrize = league.total_prize || 0
+    const additionalPrize = league.additional_prize_amount || 0
+    return basePrize + additionalPrize
+  }
+  
+  const renderLeagueCard = (league: any) => {
+    const totalPrize = calculateTotalPrize(league)
+    const hasPrize = totalPrize > 0
+    const isPrizeFunded = league.prize_pool_funded
+    const isDistributionFinalized = league.prize_distribution_finalized
+    
+    return (
+      <Card key={league.id} className={`overflow-hidden ${hasPrize ? 'border-yellow-500 dark:border-yellow-700' : ''}`}>
+        {hasPrize && (
+          <div className="bg-yellow-500 dark:bg-yellow-700 text-white text-xs font-medium px-3 py-1 flex items-center justify-center">
+            <Trophy className="h-3 w-3 mr-1" />
+            Prize Pool: {formatNaira(totalPrize)}
+          </div>
+        )}
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>{league.name}</CardTitle>
+              <CardDescription>{league.description || 'No description'}</CardDescription>
+            </div>
+            {league.entry_fee > 0 && (
+              <Badge variant="outline" className="ml-2">
+                Entry: {formatNaira(league.entry_fee)}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pb-2">
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="flex items-center">
+              <Users className="h-4 w-4 mr-1 text-muted-foreground" />
+              <span>{league.teams?.length || 0}/{league.max_teams}</span>
+            </div>
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
+              <span>{new Date(league.start_date).toLocaleDateString()}</span>
+            </div>
+            {hasPrize ? (
+              <div className="flex items-center">
+                <Trophy className="h-4 w-4 mr-1 text-yellow-500" />
+                <span className="text-yellow-500 font-medium">{formatNaira(totalPrize)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center text-muted-foreground">
+                <Trophy className="h-4 w-4 mr-1" />
+                <span>No prize</span>
+              </div>
+            )}
+          </div>
+          
+          {hasPrize && (
+            <div className="mt-2 text-xs">
+              {isPrizeFunded ? (
+                <span className="text-green-600 dark:text-green-400 font-medium">
+                  Prize pool funded
+                </span>
+              ) : (
+                <span className="text-yellow-600 dark:text-yellow-400">
+                  Prize pool not yet funded
+                </span>
+              )}
+              {isDistributionFinalized && (
+                <span className="ml-2 text-blue-600 dark:text-blue-400">
+                  • Distribution finalized
+                </span>
+              )}
+            </div>
+          )}
+        </CardContent>
+        <CardFooter>
+          <Button asChild className="w-full">
+            <Link href={`/dashboard/leagues/${league.id}`}>
+              View League
+            </Link>
           </Button>
-        </Link>
-      </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* NPFL Leagues */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            NPFL Leagues
-          </h2>
-          <p className="text-muted-foreground mb-4">Nigeria Professional Football League competitions</p>
-          <div className="space-y-4">
-            {leagues
-              .filter(league => league.type === 'NPFL')
-              .map(league => (
-                <div key={league.id} className="block">
-                  <div 
-                    className="p-4 rounded-lg border border-border hover:border-primary hover:shadow-lg hover:shadow-primary/20 cursor-pointer transition-all duration-300 transform hover:scale-[1.02] hover:bg-accent/50 group relative"
-                    onClick={() => handleLeagueClick(league.id)}
-                  >
-                    <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse pointer-events-none" />
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold group-hover:text-primary transition-colors">{league.name}</h3>
-                        <div className="flex items-center gap-4 mt-2">
-                          <p className="text-sm">
-                            <Users className="h-4 w-4 inline mr-1" />
-                            {league.max_teams} teams max
-                          </p>
-                          <p className="text-sm">
-                            Entry: ₦{league.entry_fee.toLocaleString()}
-                          </p>
-                          <p className="text-sm text-[#008753]">
-                            Prize: ₦{league.total_prize.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <p>Starts: {new Date(league.start_date).toLocaleDateString()}</p>
-                          <p>Ends: {new Date(league.end_date).toLocaleDateString()}</p>
-                          <p className="capitalize">Status: {league.status}</p>
-                        </div>
-                      </div>
-                      {myLeagues.some(ml => ml.league_id === league.id) ? (
-                        <Button 
-                          variant="outline" 
-                          className="relative z-10 hover:bg-primary hover:text-primary-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/leagues/${league.id}`);
-                          }}
-                        >
-                          View League
-                          <ArrowRight className="h-4 w-4 ml-2" />
-                        </Button>
-                      ) : (
-                        <Button
-                          className="relative z-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleJoinLeague(league);
-                          }}
-                          disabled={league.status !== 'upcoming'}
-                        >
-                          Join League
-                </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            {leagues.filter(league => league.type === 'NPFL').length === 0 && (
-              <p className="text-center text-muted-foreground py-4">No NPFL leagues available at the moment.</p>
-            )}
+        </CardFooter>
+      </Card>
+    )
+  }
+  
+  return (
+    <div className="container py-10">
+      <div className="flex flex-col space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Leagues</h1>
+            <p className="text-muted-foreground">Browse and join fantasy football leagues</p>
+          </div>
+          <Button asChild>
+            <Link href="/dashboard/leagues/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create League
+            </Link>
+          </Button>
+        </div>
+        
+        <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search leagues..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={handleSearch}
+            />
+          </div>
+          <div className="w-full sm:w-[200px]">
+            <Select defaultValue="created_at-desc" onValueChange={handleSortChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at-desc">Newest first</SelectItem>
+                <SelectItem value="created_at-asc">Oldest first</SelectItem>
+                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                <SelectItem value="total_prize-desc">Highest prize</SelectItem>
+                <SelectItem value="start_date-asc">Starting soon</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-
-        {/* EPL Leagues */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            EPL Leagues
-          </h2>
-          <p className="text-muted-foreground mb-4">English Premier League competitions</p>
-          <div className="space-y-4">
-            {leagues
-              .filter(league => league.type === 'EPL')
-              .map(league => (
-                <div key={league.id} className="block">
-                  <div 
-                    className="p-4 rounded-lg border border-border hover:border-primary hover:shadow-lg hover:shadow-primary/20 cursor-pointer transition-all duration-300 transform hover:scale-[1.02] hover:bg-accent/50 group relative"
-                    onClick={() => handleLeagueClick(league.id)}
-                  >
-                    <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse pointer-events-none" />
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold group-hover:text-primary transition-colors">{league.name}</h3>
-                        <div className="flex items-center gap-4 mt-2">
-                          <p className="text-sm">
-                            <Users className="h-4 w-4 inline mr-1" />
-                            {league.max_teams} teams max
-                          </p>
-                          <p className="text-sm">
-                            Entry: ₦{league.entry_fee.toLocaleString()}
-                          </p>
-                          <p className="text-sm text-[#008753]">
-                            Prize: ₦{league.total_prize.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <p>Starts: {new Date(league.start_date).toLocaleDateString()}</p>
-                          <p>Ends: {new Date(league.end_date).toLocaleDateString()}</p>
-                          <p className="capitalize">Status: {league.status}</p>
-                        </div>
-                      </div>
-                      {myLeagues.some(ml => ml.league_id === league.id) ? (
-                        <Button 
-                          variant="outline" 
-                          className="relative z-10 hover:bg-primary hover:text-primary-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/leagues/${league.id}`);
-                          }}
-                        >
-                          View League
-                          <ArrowRight className="h-4 w-4 ml-2" />
-                        </Button>
-                      ) : (
-                        <Button
-                          className="relative z-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleJoinLeague(league);
-                          }}
-                          disabled={league.status !== 'upcoming'}
-                        >
-                          Join League
-                        </Button>
-                      )}
-                    </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="all">All Leagues</TabsTrigger>
+            <TabsTrigger value="my">My Leagues</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all" className="mt-6">
+            {isLoading ? (
+              <div className="text-center py-10">Loading leagues...</div>
+            ) : (
+              <>
+                {filterLeagues(leagues).length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filterLeagues(leagues).map(league => renderLeagueCard(league))}
                   </div>
-                </div>
-              ))}
-            {leagues.filter(league => league.type === 'EPL').length === 0 && (
-              <p className="text-center text-muted-foreground py-4">No EPL leagues available at the moment.</p>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">No leagues found</p>
+                    {searchQuery && (
+                      <Button variant="link" onClick={() => setSearchQuery('')}>
+                        Clear search
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
-          </div>
-        </div>
+          </TabsContent>
+          
+          <TabsContent value="my" className="mt-6">
+            {isLoading ? (
+              <div className="text-center py-10">Loading leagues...</div>
+            ) : (
+              <>
+                {filterLeagues(myLeagues).length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filterLeagues(myLeagues).map(league => renderLeagueCard(league))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">You haven't joined any leagues yet</p>
+                    <Button variant="link" asChild>
+                      <Link href="#all">Browse leagues</Link>
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {selectedLeague && (
-        <JoinLeagueDialog
-          league={selectedLeague}
-          isOpen={showJoinDialog}
-          onClose={() => {
-            setShowJoinDialog(false)
-            setSelectedLeague(null)
-          }}
-          onSuccess={() => {
-            fetchLeagues()
-            setShowJoinDialog(false)
-            setSelectedLeague(null)
-          }}
-        />
-      )}
     </div>
   )
 }

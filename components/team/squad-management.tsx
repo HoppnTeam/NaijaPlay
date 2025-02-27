@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
-import { Users, AlertTriangle, ShoppingCart, Star, TrendingUp, Shirt, Layout, Tag } from 'lucide-react'
+import { Users, AlertTriangle, ShoppingCart, Star, TrendingUp, Shirt, Layout, Tag, UserCheck, UserX, Save, RefreshCw } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { TransferMarket } from "@/components/transfer-market"
@@ -27,6 +27,7 @@ interface Player {
   is_captain?: boolean
   is_vice_captain?: boolean
   is_for_sale?: boolean
+  is_starting?: boolean
   minutes_played?: number
   goals_scored?: number
   assists?: number
@@ -72,6 +73,8 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
     mentality: 'Balanced'
   })
   const [squadPlayers, setSquadPlayers] = useState<Player[]>(players || [])
+  const [startingPlayerIds, setStartingPlayerIds] = useState<string[]>([])
+  const [savingLineup, setSavingLineup] = useState(false)
   const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
@@ -107,6 +110,17 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
 
     fetchTeamSettings()
   }, [teamId, toast])
+
+  // Initialize starting players from the loaded squad
+  useEffect(() => {
+    if (squadPlayers && squadPlayers.length > 0) {
+      const startingIds = squadPlayers
+        .filter(player => player.is_starting)
+        .map(player => player.id)
+      
+      setStartingPlayerIds(startingIds)
+    }
+  }, [squadPlayers])
 
   const formatNaira = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -325,6 +339,73 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
     }
   }
 
+  const handleToggleStartingPlayer = (playerId: string) => {
+    setStartingPlayerIds(prev => {
+      // If player is already in starting lineup, remove them
+      if (prev.includes(playerId)) {
+        return prev.filter(id => id !== playerId)
+      }
+      
+      // If we already have 11 starting players, show an error
+      if (prev.length >= 11) {
+        toast({
+          title: "Starting Lineup Full",
+          description: "You can only select 11 starting players. Remove a player before adding another.",
+          variant: "destructive"
+        })
+        return prev
+      }
+      
+      // Add player to starting lineup
+      return [...prev, playerId]
+    })
+  }
+
+  const handleSaveStartingLineup = async () => {
+    if (startingPlayerIds.length !== 11) {
+      toast({
+        title: "Invalid Lineup",
+        description: `You must select exactly 11 starting players. Currently selected: ${startingPlayerIds.length}`,
+        variant: "destructive"
+      })
+      return
+    }
+
+    setSavingLineup(true)
+    try {
+      const response = await fetch(`/api/team/${teamId}/starting-players`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startingPlayerIds }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to update starting players')
+      }
+
+      // Update local state to reflect changes
+      setSquadPlayers(prev => prev.map(p => ({
+        ...p,
+        is_starting: startingPlayerIds.includes(p.id)
+      })))
+
+      toast({
+        title: "Starting Lineup Saved",
+        description: "Your starting 11 players have been updated successfully.",
+      })
+    } catch (error) {
+      console.error('Error updating starting lineup:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update starting lineup",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingLineup(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -354,15 +435,40 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
       <FormationVisualizer
         open={showFormation}
         onClose={() => setShowFormation(false)}
-        players={players}
+        players={squadPlayers.map(p => ({
+          ...p,
+          isSubstitute: !startingPlayerIds.includes(p.id)
+        }))}
         formation={currentFormation}
         onFormationChange={handleFormationChange}
         onTacticsChange={handleTacticsChange}
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Current Squad</CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="ml-2">
+              Starting: {startingPlayerIds.length}/11
+            </Badge>
+            <Button 
+              onClick={handleSaveStartingLineup} 
+              disabled={savingLineup || startingPlayerIds.length !== 11}
+              size="sm"
+            >
+              {savingLineup ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Starting XI
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
@@ -384,10 +490,33 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
                       {player.is_for_sale && (
                         <Badge variant="secondary">For Sale</Badge>
                       )}
+                      {startingPlayerIds.includes(player.id) ? (
+                        <Badge variant="default">Starting XI</Badge>
+                      ) : (
+                        <Badge variant="outline">Substitute</Badge>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  <Button
+                    variant={startingPlayerIds.includes(player.id) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleToggleStartingPlayer(player.id)}
+                    disabled={loading}
+                  >
+                    {startingPlayerIds.includes(player.id) ? (
+                      <>
+                        <UserCheck className="h-4 w-4 mr-1" />
+                        Starting
+                      </>
+                    ) : (
+                      <>
+                        <UserX className="h-4 w-4 mr-1" />
+                        Substitute
+                      </>
+                    )}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

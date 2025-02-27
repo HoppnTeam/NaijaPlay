@@ -26,6 +26,7 @@ export interface Player extends PlayerRow {
 
 export interface TeamPlayer extends TeamPlayerRow {
   player: Player
+  is_starting?: boolean
 }
 
 export interface Squad {

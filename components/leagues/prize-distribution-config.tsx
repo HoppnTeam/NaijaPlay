@@ -29,6 +29,7 @@ interface PrizeDistributionTemplate {
   name: string
   description: string
   positions: PrizeDistribution[]
+  is_default?: boolean
 }
 
 export function PrizeDistributionConfig({ 

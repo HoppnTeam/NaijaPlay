@@ -8,12 +8,13 @@ import {
   Trophy,
   LineChart,
   Target,
-  DollarSign,
   Menu,
   User,
   LogOut,
   Coins,
+  BookOpen,
 } from "lucide-react"
+import NairaSign from '@/components/icons/NairaSign'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,7 +70,7 @@ export function NavClient({ profile }: NavClientProps) {
                 href="/dashboard/betting" 
                 className="border-transparent text-white/90 hover:text-white hover:border-[#FFD700] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
               >
-                <DollarSign className="w-4 h-4 mr-2" />
+                <NairaSign className="w-4 h-4 mr-2" />
                 Betting
               </Link>
               <Link 
@@ -85,6 +86,13 @@ export function NavClient({ profile }: NavClientProps) {
               >
                 <Coins className="w-4 h-4 mr-2" />
                 Tokens
+              </Link>
+              <Link 
+                href="/dashboard/user-guide" 
+                className="border-transparent text-white/90 hover:text-white hover:border-[#FFD700] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                User Guide
               </Link>
             </div>
           </div>

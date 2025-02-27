@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Database } from '@/types/supabase'
 
 interface WalletCardProps {
   variant?: 'default' | 'compact'
@@ -20,11 +22,12 @@ interface WalletCardProps {
 
 interface Transaction {
   id: string
-  type: 'bet_placed' | 'bet_won' | 'bet_lost'
+  type: string
   amount: number
   created_at: string
   status: 'completed' | 'pending' | 'failed'
-  reference?: string
+  description?: string
+  metadata?: any
 }
 
 export function WalletCard({ variant = 'default' }: WalletCardProps) {
@@ -52,7 +55,7 @@ export function WalletCard({ variant = 'default' }: WalletCardProps) {
       if (!user) return
 
       const { data, error } = await supabase
-        .from('user_balances')
+        .from('wallets')
         .select('balance')
         .eq('user_id', user.id)
         .single()
@@ -129,7 +132,7 @@ export function WalletCard({ variant = 'default' }: WalletCardProps) {
       if (!user) return
 
       const { data, error } = await supabase
-        .from('wallet_transactions')
+        .from('transactions')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -147,14 +150,16 @@ export function WalletCard({ variant = 'default' }: WalletCardProps) {
     fetchTransactions()
   }, [])
 
-  const getTransactionIcon = (type: Transaction['type']) => {
+  const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'bet_placed':
+      case 'debit':
+      case 'transfer_out':
         return <History className="h-4 w-4 text-orange-500" />
-      case 'bet_won':
+      case 'credit':
+      case 'transfer_in':
         return <TrendingUp className="h-4 w-4 text-green-500" />
-      case 'bet_lost':
-        return <TrendingUp className="h-4 w-4 text-red-500" />
+      default:
+        return <History className="h-4 w-4 text-gray-500" />
     }
   }
 
@@ -265,16 +270,21 @@ export function WalletCard({ variant = 'default' }: WalletCardProps) {
                       {getTransactionIcon(transaction.type)}
                       <div>
                         <div className="font-medium">
-                          {transaction.type === 'bet_placed' ? 'Bet Placed' :
-                           transaction.type === 'bet_won' ? 'Bet Won' : 'Bet Lost'}
+                          {transaction.description || (
+                            transaction.type === 'credit' ? 'Deposit' :
+                            transaction.type === 'debit' ? 'Withdrawal' :
+                            transaction.type === 'transfer_in' ? 'Transfer In' :
+                            transaction.type === 'transfer_out' ? 'Transfer Out' : 
+                            'Transaction'
+                          )}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {new Date(transaction.created_at).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
-                    <div className={transaction.type === 'bet_won' ? 'text-green-600' : 'text-red-600'}>
-                      {transaction.type === 'bet_won' ? '+' : '-'}{formatNaira(transaction.amount)}
+                    <div className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
+                      {transaction.amount > 0 ? '+' : ''}{formatNaira(transaction.amount)}
                     </div>
                   </div>
                 ))}

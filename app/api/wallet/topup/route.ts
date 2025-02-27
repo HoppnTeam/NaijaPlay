@@ -19,10 +19,10 @@ export async function POST(request: Request) {
     }
 
     // Get request body
-    const { amount, tokens, package_name, email } = await request.json()
+    const { amount, email } = await request.json()
 
     // Validate required fields
-    if (!amount || !tokens || !package_name || !email) {
+    if (!amount || !email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -39,17 +39,20 @@ export async function POST(request: Request) {
     }
 
     try {
+      // Calculate amount in Naira (convert from kobo)
+      const amountInNaira = amount / 100
+
       // Create transaction record
       const { data: transaction, error: transactionError } = await supabase
-        .from('wallet_transactions')
+        .from('transactions')
         .insert({
           user_id: user.id,
-          type: 'deposit',
-          amount: tokens,
+          type: 'credit',
+          amount: amountInNaira,
           status: 'pending',
+          description: 'Wallet top-up',
           metadata: {
-            package_name,
-            payment_amount: amount / 100 // Convert back from kobo to Naira for record
+            payment_amount: amountInNaira
           }
         })
         .select()
@@ -71,12 +74,11 @@ export async function POST(request: Request) {
           email,
           amount, // Amount in kobo
           reference: transaction.id,
-          callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/wallet/callback`,
+          callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet/topup/callback`,
           metadata: {
             user_id: user.id,
             transaction_id: transaction.id,
-            tokens,
-            package_name
+            amount: amountInNaira
           }
         })
       })
@@ -84,7 +86,7 @@ export async function POST(request: Request) {
       if (!response.ok) {
         // If Paystack request fails, update transaction status and throw error
         await supabase
-          .from('wallet_transactions')
+          .from('transactions')
           .update({ status: 'failed' })
           .eq('id', transaction.id)
 
@@ -148,7 +150,7 @@ export async function GET(request: Request) {
     if (!response.ok || !verificationData.status) {
       // Update transaction status to failed
       await supabase
-        .from('wallet_transactions')
+        .from('transactions')
         .update({ status: 'failed' })
         .eq('id', reference)
 
@@ -160,7 +162,7 @@ export async function GET(request: Request) {
 
     // Get the transaction record
     const { data: transaction } = await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .select('*')
       .eq('id', reference)
       .single()
@@ -172,10 +174,11 @@ export async function GET(request: Request) {
       )
     }
 
-    // Update user's balance
-    const { error: balanceError } = await supabase.rpc('update_user_balance', {
+    // Update user's balance using the add_to_wallet function
+    const { error: balanceError } = await supabase.rpc('add_to_wallet', {
       p_user_id: transaction.user_id,
-      p_amount: transaction.amount
+      p_amount: transaction.amount,
+      p_description: 'Paystack payment'
     })
 
     if (balanceError) {
@@ -188,10 +191,13 @@ export async function GET(request: Request) {
 
     // Update transaction status to completed
     const { error: updateError } = await supabase
-      .from('wallet_transactions')
+      .from('transactions')
       .update({ 
         status: 'completed',
-        reference: verificationData.data.reference
+        metadata: {
+          ...transaction.metadata,
+          paystack_reference: verificationData.data.reference
+        }
       })
       .eq('id', reference)
 

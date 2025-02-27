@@ -9,8 +9,9 @@ import { useToast } from '@/components/ui/use-toast'
 import { PrizeDistributionConfig } from '@/components/leagues/prize-distribution-config'
 import { PrizePoolFunding } from '@/components/leagues/prize-pool-funding'
 import { LeagueLeaderboard } from '@/components/leagues/league-leaderboard'
+import { LeagueOwnerIncentives } from '@/components/leagues/league-owner-incentives'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Trophy, Wallet, Users, Settings } from 'lucide-react'
+import { ArrowLeft, Trophy, Wallet, Users, Settings, Gift } from 'lucide-react'
 import Link from 'next/link'
 
 interface LeagueManagePageProps {
@@ -153,7 +154,7 @@ export default function LeagueManagePage({ params }: LeagueManagePageProps) {
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-4">
+          <TabsList className="grid grid-cols-5">
             <TabsTrigger value="prize-distribution" className="flex items-center">
               <Trophy className="mr-2 h-4 w-4" />
               Prize Distribution
@@ -165,6 +166,10 @@ export default function LeagueManagePage({ params }: LeagueManagePageProps) {
             <TabsTrigger value="leaderboard" className="flex items-center">
               <Users className="mr-2 h-4 w-4" />
               Leaderboard
+            </TabsTrigger>
+            <TabsTrigger value="incentives" className="flex items-center">
+              <Gift className="mr-2 h-4 w-4" />
+              Incentives
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center">
               <Settings className="mr-2 h-4 w-4" />
@@ -197,6 +202,15 @@ export default function LeagueManagePage({ params }: LeagueManagePageProps) {
               leagueId={leagueId}
               showPotentialEarnings={true}
             />
+          </TabsContent>
+          
+          <TabsContent value="incentives" className="mt-6">
+            {userId && (
+              <LeagueOwnerIncentives 
+                leagueId={leagueId}
+                userId={userId}
+              />
+            )}
           </TabsContent>
           
           <TabsContent value="settings" className="mt-6">
@@ -248,24 +262,9 @@ export default function LeagueManagePage({ params }: LeagueManagePageProps) {
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Platform Fee</p>
-                        <p className="text-lg">10%</p>
+                        <p className="text-lg">₦{(league.platform_fee || 0).toLocaleString()}</p>
                       </div>
                     </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-medium">Teams</h3>
-                    <p className="text-lg">{league.teams?.length || 0} / {league.max_teams} teams joined</p>
-                  </div>
-                  
-                  <div className="pt-4">
-                    <Button asChild>
-                      <Link href={`/dashboard/leagues/${leagueId}/edit`}>
-                        Edit League Settings
-                      </Link>
-                    </Button>
                   </div>
                 </div>
               </CardContent>
