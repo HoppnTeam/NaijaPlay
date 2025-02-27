@@ -13,6 +13,7 @@ import {
   LogOut,
   Coins,
   BookOpen,
+  Settings,
 } from "lucide-react"
 import NairaSign from '@/components/icons/NairaSign'
 import {
@@ -23,22 +24,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useEffect, useState } from 'react'
 
 interface NavClientProps {
   profile: {
-    username: string | null
-    full_name: string | null
+    id?: string
+    username?: string | null
+    full_name?: string | null
+    role?: string | null
+    email?: string | null
   } | null
 }
 
 export function NavClient({ profile }: NavClientProps) {
   const router = useRouter()
   const supabase = createClientComponentClient()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    // Check if user has admin role
+    const adminCheck = profile?.role === 'admin'
+    setIsAdmin(adminCheck)
+  }, [profile])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.refresh()
     router.push('/login')
+  }
+
+  // Get the first letter of the user's name for the avatar
+  const getAvatarInitial = () => {
+    if (profile?.full_name) return profile.full_name.charAt(0)
+    if (profile?.username) return profile.username.charAt(0)
+    if (profile?.email) return profile.email.charAt(0)
+    return 'U'
   }
 
   return (
@@ -102,7 +122,7 @@ export function NavClient({ profile }: NavClientProps) {
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-[#FFD700] text-[#008753]">
-                      {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || 'U'}
+                      {getAvatarInitial()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -114,6 +134,17 @@ export function NavClient({ profile }: NavClientProps) {
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
+                
+                {/* Admin link based on state */}
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/dashboard" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Admin Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -123,9 +154,74 @@ export function NavClient({ profile }: NavClientProps) {
             </DropdownMenu>
           </div>
           <div className="flex items-center sm:hidden">
-            <Button variant="ghost" size="icon" className="text-white">
-              <Menu className="h-6 w-6" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative p-1">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard" className="cursor-pointer">
+                    <Trophy className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/leagues" className="cursor-pointer">
+                    <Target className="mr-2 h-4 w-4" />
+                    <span>Leagues</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/betting" className="cursor-pointer">
+                    <NairaSign className="mr-2 h-4 w-4" />
+                    <span>Betting</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/stats" className="cursor-pointer">
+                    <LineChart className="mr-2 h-4 w-4" />
+                    <span>Stats</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/tokens" className="cursor-pointer">
+                    <Coins className="mr-2 h-4 w-4" />
+                    <span>Tokens</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/user-guide" className="cursor-pointer">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    <span>User Guide</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile" className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                
+                {/* Admin link for mobile */}
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/dashboard" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Admin Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

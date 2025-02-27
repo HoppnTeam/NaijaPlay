@@ -1,191 +1,99 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
-  try {
-    const supabase = createRouteHandlerClient({ cookies })
-
-    // Get current gameweek
-    const { data: gameweek, error: gameweekError } = await supabase
-      .from('gameweeks')
-      .select('*')
-      .eq('status', 'in_progress')
-      .single()
-
-    if (gameweekError && gameweekError.code !== 'PGRST116') {
-      throw gameweekError
-    }
-
-    // If no active gameweek, get the most recent one
-    if (!gameweek) {
-      const { data: recentGameweek, error: recentError } = await supabase
-        .from('gameweeks')
-        .select('*')
-        .order('number', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (recentError && recentError.code !== 'PGRST116') {
-        throw recentError
-      }
-
-      if (!recentGameweek) {
-        // If no gameweeks exist, create one
-        const startDate = new Date()
-        const endDate = new Date(startDate)
-        endDate.setDate(endDate.getDate() + 7)
-
-        const { data: newGameweek, error: createError } = await supabase
-          .from('gameweeks')
-          .insert({
-            number: 1,
-            start_date: startDate.toISOString(),
-            end_date: endDate.toISOString(),
-            status: 'upcoming'
-          })
-          .select()
-          .single()
-
-        if (createError) throw createError
-
-        return NextResponse.json({
-          gameweek: newGameweek,
-          matches: [],
-          leaderboard: []
-        })
-      }
-
-      return NextResponse.json({
-        gameweek: recentGameweek,
-        matches: [],
-        leaderboard: []
-      })
-    }
-
-    // Get live matches
-    const { data: matches, error: matchesError } = await supabase
-      .from('match_history')
-      .select(`
-        *,
-        home_team:teams!match_history_home_team_id_fkey (id, name),
-        away_team:teams!match_history_away_team_id_fkey (id, name)
-      `)
-      .eq('status', 'in_progress')
-
-    if (matchesError) throw matchesError
-
-    // Get teams if no matches
-    let currentMatches = matches || []
-    if (currentMatches.length === 0) {
-      let { data: teams, error: teamsError } = await supabase
-        .from('teams')
-        .select('id, name')
-        .limit(6)
-
-      if (teamsError) throw teamsError
-
-      // If no teams exist, create some
-      if (!teams || teams.length < 2) {
-        const demoTeams = [
-          { name: 'Team Alpha', user_id: 'system' },
-          { name: 'Team Beta', user_id: 'system' },
-          { name: 'Team Gamma', user_id: 'system' },
-          { name: 'Team Delta', user_id: 'system' }
-        ]
-
-        const { data: createdTeams, error: createTeamsError } = await supabase
-          .from('teams')
-          .insert(demoTeams)
-          .select('id, name')
-
-        if (createTeamsError) throw createTeamsError
-        teams = createdTeams
-      }
-
-      // If we have teams but no matches, create some
-      if (teams && teams.length >= 2) {
-        const newMatches = []
-        for (let i = 0; i < teams.length - 1; i += 2) {
-          const matchDate = new Date()
-          matchDate.setHours(matchDate.getHours() + i)
-
-          newMatches.push({
-            gameweek_id: gameweek.id,
-            home_team_id: teams[i].id,
-            away_team_id: teams[i + 1].id,
-            match_date: matchDate.toISOString(),
-            status: 'scheduled',
-            home_score: 0,
-            away_score: 0
-          })
-        }
-
-        const { data: createdMatches, error: createError } = await supabase
-          .from('match_history')
-          .insert(newMatches)
-          .select(`
-            *,
-            home_team:teams!match_history_home_team_id_fkey (id, name),
-            away_team:teams!match_history_away_team_id_fkey (id, name)
-          `)
-
-        if (createError) throw createError
-        currentMatches = createdMatches || []
-      }
-    }
-
-    // Get leaderboard
-    const { data: leaderboard, error: leaderboardError } = await supabase
-      .from('team_gameweek_stats')
-      .select(`
-        *,
-        teams (
-          id,
-          name,
-          profiles (
-            full_name
-          )
-        )
-      `)
-      .eq('gameweek_id', gameweek?.id)
-      .order('total_points', { ascending: false })
-
-    if (leaderboardError) throw leaderboardError
-
-    return NextResponse.json({
-      gameweek,
-      matches: currentMatches,
-      leaderboard: leaderboard || []
-    })
-  } catch (error) {
-    console.error('Error fetching gameweek data:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch gameweek data' },
-      { status: 500 }
-    )
+export async function GET(request: NextRequest) {
+  const supabase = createRouteHandlerClient({ cookies })
+  
+  // Check if user is authenticated
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  
+  // Get query parameters
+  const searchParams = request.nextUrl.searchParams
+  const status = searchParams.get('status')
+  
+  // Build query
+  let query = supabase.from('gameweeks').select('*')
+  
+  // Apply filters if provided
+  if (status) {
+    query = query.eq('status', status)
+  }
+  
+  // Execute query with ordering
+  const { data, error } = await query.order('number', { ascending: true })
+  
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  
+  return NextResponse.json(data)
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const supabase = createRouteHandlerClient({ cookies })
+  
+  // Check if user is authenticated and has admin role
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  
   try {
-    const { number, startDate, endDate } = await request.json()
-    const supabase = createRouteHandlerClient({ cookies })
-
+    const body = await request.json()
+    
+    // Validate required fields
+    if (!body.number || !body.start_date || !body.end_date) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+    
+    // Check if gameweek number already exists
+    const { data: existingGameweek } = await supabase
+      .from('gameweeks')
+      .select('id')
+      .eq('number', body.number)
+      .single()
+    
+    if (existingGameweek) {
+      return NextResponse.json(
+        { error: `Gameweek ${body.number} already exists` },
+        { status: 409 }
+      )
+    }
+    
+    // Insert new gameweek
     const { data, error } = await supabase
       .from('gameweeks')
       .insert({
-        number,
-        start_date: startDate,
-        end_date: endDate,
-        status: 'upcoming'
+        number: body.number,
+        start_date: body.start_date,
+        end_date: body.end_date,
+        status: body.status || 'upcoming',
       })
       .select()
       .single()
-
-    if (error) throw error
-
-    return NextResponse.json(data)
+    
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    return NextResponse.json(data, { status: 201 })
   } catch (error) {
     console.error('Error creating gameweek:', error)
     return NextResponse.json(

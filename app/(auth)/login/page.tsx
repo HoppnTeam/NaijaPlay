@@ -59,19 +59,8 @@ function LoginContent() {
 
       if (error) throw error
 
-      // Check if user is admin
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single()
-
-      if (profile?.role === 'admin') {
-        router.push('/admin/dashboard')
-      } else {
-        router.push('/dashboard')
-      }
-      
+      // Always redirect to dashboard regardless of role
+      router.push('/dashboard')
       router.refresh()
     } catch (error) {
       handleError(error, {

@@ -5,15 +5,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { RefreshCw, Calendar } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Match } from '@/lib/database-schema'
 
-interface UpcomingFixturesProps {
+interface LiveMatchesListProps {
   matches: Match[]
 }
 
-export default function UpcomingFixtures({ matches }: UpcomingFixturesProps) {
+export default function LiveMatchesList({ matches }: LiveMatchesListProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
   const router = useRouter()
@@ -41,28 +41,17 @@ export default function UpcomingFixtures({ matches }: UpcomingFixturesProps) {
         return true
       })
 
-  // Group matches by date
-  const groupedMatches = filteredMatches.reduce((groups, match) => {
-    const date = new Date(match.match_date).toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    })
-    
-    if (!groups[date]) {
-      groups[date] = []
-    }
-    
-    groups[date].push(match)
-    return groups
-  }, {} as Record<string, Match[]>)
+  // Helper function to generate a random minute for simulation
+  const getRandomMinute = () => {
+    return Math.floor(Math.random() * 90) + 1
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
           <TabsList>
-            <TabsTrigger value="all">All Fixtures</TabsTrigger>
+            <TabsTrigger value="all">All Matches</TabsTrigger>
             <TabsTrigger value="npfl">NPFL</TabsTrigger>
             <TabsTrigger value="epl">EPL</TabsTrigger>
           </TabsList>
@@ -81,23 +70,12 @@ export default function UpcomingFixtures({ matches }: UpcomingFixturesProps) {
       
       {filteredMatches.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
-          No upcoming fixtures scheduled.
+          No live matches currently in progress.
         </Card>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedMatches).map(([date, dateMatches]) => (
-            <div key={date} className="space-y-2">
-              <h3 className="flex items-center gap-2 font-medium text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                {date}
-              </h3>
-              
-              <div className="grid gap-3">
-                {dateMatches.map((match) => (
-                  <FixtureCard key={match.id} match={match} />
-                ))}
-              </div>
-            </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {filteredMatches.map((match) => (
+            <LiveMatchCard key={match.id} match={match} />
           ))}
         </div>
       )}
@@ -105,31 +83,51 @@ export default function UpcomingFixtures({ matches }: UpcomingFixturesProps) {
   )
 }
 
-function FixtureCard({ match }: { match: Match }) {
-  const matchTime = new Date(match.match_date).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
+function LiveMatchCard({ match }: { match: Match }) {
+  // For simulation purposes, generate a random minute
+  const matchMinute = getRandomMinute()
+  
+  // Format the match date
+  const matchDate = new Date(match.match_date).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
   })
   
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
+        <div className="flex items-center justify-between mb-2">
+          <Badge variant="secondary" className="text-xs">
+            {matchMinute}'
+          </Badge>
+          <Badge variant="outline" className="text-xs bg-red-100">
+            LIVE
+          </Badge>
+          <span className="text-xs text-muted-foreground">{matchDate}</span>
+        </div>
+        
+        <div className="grid grid-cols-3 items-center gap-2">
+          <div className="text-right">
             <p className="font-medium">{match.home_team?.name}</p>
           </div>
           
-          <div className="mx-4 text-center">
-            <Badge variant="outline" className="font-mono">
-              {matchTime}
-            </Badge>
+          <div className="flex justify-center items-center">
+            <div className="text-center px-3 py-1 bg-muted rounded-md font-mono font-bold">
+              {match.home_score} - {match.away_score}
+            </div>
           </div>
           
-          <div className="flex-1 text-right">
+          <div className="text-left">
             <p className="font-medium">{match.away_team?.name}</p>
           </div>
         </div>
       </CardContent>
     </Card>
   )
+}
+
+// Helper function to generate a random minute for simulation
+function getRandomMinute() {
+  return Math.floor(Math.random() * 90) + 1
 } 

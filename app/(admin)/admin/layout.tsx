@@ -15,7 +15,7 @@ export default async function AdminDashboardLayout({
   } = await supabase.auth.getSession()
 
   if (!session) {
-    redirect('/admin/login')
+    redirect('/login')
   }
 
   const { data: profile } = await supabase
@@ -25,14 +25,18 @@ export default async function AdminDashboardLayout({
     .single()
 
   if (profile?.role !== 'admin') {
-    redirect('/login')
+    redirect('/dashboard')
   }
 
+  console.log('Is admin in dashboard layout:', profile?.role === 'admin')
+  console.log('Server-side profile data:', profile)
+  console.log('Is admin on server:', profile?.role === 'admin')
+
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-background">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background">
           <div className="container mx-auto px-6 py-8">
             {children}
           </div>

@@ -38,7 +38,7 @@ export function AdminSidebar() {
 
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar className="border-r border-border">
         <SidebarHeader>
           <h2 className="text-xl font-bold">Admin Panel</h2>
         </SidebarHeader>

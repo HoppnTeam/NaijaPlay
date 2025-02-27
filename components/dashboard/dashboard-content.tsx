@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Card } from "@/components/ui/card"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { LeagueTable } from "@/components/dashboard/league-table"
-import { UpcomingFixtures } from "@/components/dashboard/upcoming-fixtures"
+import UpcomingFixtures from "@/components/dashboard/upcoming-fixtures"
 import { PerformanceChart } from "@/components/dashboard/performance-chart"
 import { TopPerformers } from '@/components/top-performers'
 import { calculatePoints } from '@/lib/calculatePoints'
@@ -128,7 +128,7 @@ export function DashboardContent({ leagueData, allPlayers }: Omit<DashboardConte
           )}
         </Suspense>
         <Suspense fallback={<div>Loading fixtures...</div>}>
-          <UpcomingFixtures />
+          <UpcomingFixtures matches={[]} />
         </Suspense>
         <Suspense fallback={<div>Loading performance chart...</div>}>
           <PerformanceChart />

@@ -3,46 +3,8 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import type { Database } from '@/lib/database.types'
-import { Trophy, Home, Users, DollarSign, BarChart, Calendar, Shield } from 'lucide-react'
+import { Trophy, Home, Users, DollarSign, BarChart, Calendar, Shield, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const navigation = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: Home
-  },
-  {
-    name: 'My Teams',
-    href: '/dashboard/team',
-    icon: Shield
-  },
-  {
-    name: 'Leagues',
-    href: '/dashboard/leagues',
-    icon: Trophy
-  },
-  {
-    name: 'Tokens',
-    href: '/dashboard/tokens',
-    icon: DollarSign
-  },
-  {
-    name: 'Match Simulation',
-    href: '/dashboard/match',
-    icon: Trophy
-  },
-  {
-    name: 'Gameweek',
-    href: '/dashboard/gameweek',
-    icon: Calendar
-  },
-  {
-    name: 'Statistics',
-    href: '/dashboard/stats',
-    icon: BarChart
-  }
-]
 
 export default async function DashboardLayout({
   children
@@ -57,6 +19,63 @@ export default async function DashboardLayout({
 
   if (!session) {
     redirect('/login')
+  }
+
+  // Check if user has admin role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single()
+
+  const isAdmin = profile?.role === 'admin'
+
+  // Create navigation items
+  const navigation = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: Home
+    },
+    {
+      name: 'My Teams',
+      href: '/dashboard/team',
+      icon: Shield
+    },
+    {
+      name: 'Leagues',
+      href: '/dashboard/leagues',
+      icon: Trophy
+    },
+    {
+      name: 'Tokens',
+      href: '/dashboard/tokens',
+      icon: DollarSign
+    },
+    {
+      name: 'Match Simulation',
+      href: '/dashboard/match-simulation',
+      icon: Trophy
+    },
+    {
+      name: 'Gameweek',
+      href: '/dashboard/gameweek',
+      icon: Calendar
+    },
+    {
+      name: 'Statistics',
+      href: '/dashboard/stats',
+      icon: BarChart
+    }
+  ]
+  
+  // Add admin dashboard link for admin users
+  if (isAdmin) {
+    navigation.push({
+      name: 'Admin Dashboard',
+      href: '/admin/dashboard',
+      icon: Settings
+    })
   }
 
   return (
