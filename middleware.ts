@@ -16,11 +16,11 @@ export async function middleware(request: NextRequest) {
     // Create supabase server client
     const supabase = createServerClient()
 
-    // Refresh session if available
-    const { data: { session }, error } = await supabase.auth.getSession()
+    // Get authenticated user if available
+    const { data: { user }, error } = await supabase.auth.getUser()
 
     // Handle authentication
-    if (!session) {
+    if (!user) {
       // Redirect unauthenticated users to login
       const redirectUrl = new URL('/login', request.url)
       redirectUrl.searchParams.set('next', pathname)
@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .single()
 
       if (profile?.role !== 'admin') {

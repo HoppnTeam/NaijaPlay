@@ -13,8 +13,8 @@ export async function POST(req: Request) {
     const supabase = createRouteHandlerClient({ cookies })
     
     // Get user session
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     // Check rate limit
     const rateLimitResult = await checkRateLimit(
       purchaseRateLimit,
-      `purchase_${session.user.id}`
+      `purchase_${user.id}`
     )
 
     if (!rateLimitResult.success) {
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       .from('teams')
       .select('id, name')
       .eq('id', teamId)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .single()
 
     if (teamError || !team) {
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     const { data: existingPurchase } = await supabase
       .from('token_purchases')
       .select('id')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .eq('team_id', teamId)
       .eq('payment_status', 'pending')
       .single()
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
     const { data: purchase, error: purchaseError } = await supabase
       .from('token_purchases')
       .insert({
-        user_id: session.user.id,
+        user_id: user.id,
         team_id: teamId,
         package_id: packageId,
         amount_paid: tokenPackage.price,
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
 
     // Initialize Paystack payment
     const payment = await paystack.transaction.initialize({
-      email: session.user.email,
+      email: user.email || '',
       amount: Math.round(tokenPackage.price * 100), // Convert to kobo
       reference: `TOKEN_${purchase.id}`,
       metadata: {

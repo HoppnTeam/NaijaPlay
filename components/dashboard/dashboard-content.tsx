@@ -51,34 +51,49 @@ interface Team {
 interface League {
   id: string
   name: string
-  type: 'NPFL' | 'EPL'
-  max_teams: number
-  entry_fee: number
-  total_prize: number
-  start_date: string
-  end_date: string
-  status: 'upcoming' | 'active' | 'completed'
+  code: string
+  user_id: string
+}
+
+interface Player {
+  id: string
+  name: string
+  position: string
+  team: string
+  current_price: number
 }
 
 interface DashboardContentProps {
   teamData: Team | null
   leagueData: League | null
-  allPlayers: TeamPlayer['player'][]
+  allPlayers: Player[]
 }
 
-function DashboardStats({ teamData }: { teamData: Team | null }) {
-  const totalPoints = teamData?.team_players?.reduce(
-    (sum: number, tp: TeamPlayer) => sum + calculatePoints(tp.player),
-    0
-  ) || 0
+function TeamStats({ teamData }: { teamData: Team | null }) {
+  if (!teamData) {
+    return (
+      <div className="text-center p-6">
+        <p className="text-muted-foreground">Create your team to see stats</p>
+        <Button className="mt-4">
+          <Plus className="mr-2 h-4 w-4" />
+          Create Team
+        </Button>
+      </div>
+    )
+  }
 
-  const teamValue = teamData?.team_players?.reduce(
-    (sum: number, tp: TeamPlayer) => sum + (tp.player.current_price || 0),
-    0
-  ) || 0
+  // Calculate total points
+  const totalPoints = teamData.team_players.reduce((total, tp) => {
+    return total + calculatePoints(tp.player)
+  }, 0)
+
+  // Calculate team value
+  const teamValue = teamData.team_players.reduce((total, tp) => {
+    return total + tp.player.current_price
+  }, 0)
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
       <StatsCard
         title="Total Points"
         value={totalPoints}
@@ -109,28 +124,28 @@ function DashboardStats({ teamData }: { teamData: Team | null }) {
 
 export function DashboardContent({ leagueData, allPlayers }: Omit<DashboardContentProps, 'teamData'>) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold">Dashboard</h2>
+        <h2 className="text-2xl sm:text-3xl font-bold">Dashboard</h2>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Suspense fallback={<div>Loading league table...</div>}>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <Suspense fallback={<div className="h-64 flex items-center justify-center">Loading league table...</div>}>
           {leagueData?.id ? (
             <LeagueTable 
               leagueId={leagueData.id}
               data={[]} // We'll fetch this data in the LeagueTable component
             />
           ) : (
-            <Card className="p-6">
+            <Card className="p-4 sm:p-6 h-full flex items-center justify-center">
               <p className="text-muted-foreground text-center">Join a league to see standings</p>
             </Card>
           )}
         </Suspense>
-        <Suspense fallback={<div>Loading fixtures...</div>}>
+        <Suspense fallback={<div className="h-64 flex items-center justify-center">Loading fixtures...</div>}>
           <UpcomingFixtures matches={[]} />
         </Suspense>
-        <Suspense fallback={<div>Loading performance chart...</div>}>
+        <Suspense fallback={<div className="h-64 flex items-center justify-center">Loading performance chart...</div>}>
           <PerformanceChart />
         </Suspense>
       </div>

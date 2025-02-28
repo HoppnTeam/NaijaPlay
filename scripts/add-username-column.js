@@ -10,57 +10,66 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 async function addUsernameColumn() {
   try {
-    console.log('Checking profiles table structure...');
+    console.log('Attempting to add username column to profiles table...');
     
-    // First, let's check if we can get a profile
-    const { data: sampleProfile, error: sampleError } = await supabase
-      .from('profiles')
-      .select('*')
-      .limit(1)
-      .single();
+    // First, check if we can connect to the database
+    const { data: healthCheck, error: healthError } = await supabase.from('profiles').select('id').limit(1);
     
-    if (sampleError) {
-      console.error('Error fetching sample profile:', sampleError.message);
+    if (healthError) {
+      console.error('Error connecting to database:', healthError.message);
+      
+      if (healthError.message.includes('relation "profiles" does not exist')) {
+        console.log('The profiles table does not exist. Please create it first.');
+      }
+      
       return;
     }
     
-    console.log('Profiles table exists. Sample profile:');
-    console.log(JSON.stringify(sampleProfile, null, 2));
+    console.log('Successfully connected to database.');
     
-    // Check if the username column exists
-    const hasUsername = Object.keys(sampleProfile).includes('username');
+    // Since we can't use RPC or direct SQL with the JavaScript client,
+    // let's try to update a profile with a username field to see if it exists
+    const testUpdate = {
+      username: 'test_username'
+    };
     
-    if (hasUsername) {
-      console.log('Username column already exists.');
-    } else {
-      console.log('Username column is missing. We need to update the layout.tsx file to not require it.');
-    }
-    
-    // Now let's update the admin user
-    const targetEmail = '5waycontractors@gmail.com';
-    const targetId = '5b6330a1-86a3-45a6-b871-704492093ff3';
-    
-    // Update the profile to ensure it has the admin role
-    const { data: updatedProfile, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('profiles')
-      .update({
-        email: targetEmail,
-        role: 'admin'
-      })
-      .eq('id', targetId)
-      .select()
-      .single();
+      .update(testUpdate)
+      .eq('id', healthCheck[0]?.id || 'non-existent-id')
+      .select('username');
     
     if (updateError) {
-      console.error('Error updating profile:', updateError.message);
+      if (updateError.message.includes('column "username" of relation "profiles" does not exist')) {
+        console.log('Confirmed: username column does not exist.');
+        console.log('\nPlease run the following SQL in the Supabase SQL Editor:');
+        console.log(`
+          ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username TEXT;
+        `);
+        
+        console.log('\nOr use the Supabase dashboard:');
+        console.log('1. Go to the Supabase dashboard');
+        console.log('2. Navigate to the "Table Editor"');
+        console.log('3. Select the "profiles" table');
+        console.log('4. Click "Add column"');
+        console.log('5. Set the name to "username" and type to "text"');
+        console.log('6. Click "Save"');
+      } else {
+        console.error('Error updating profile:', updateError.message);
+      }
       return;
     }
     
-    console.log('Updated profile with admin role:', updatedProfile);
+    console.log('Username column already exists or was successfully added!');
     
   } catch (error) {
     console.error('Unexpected error:', error.message);

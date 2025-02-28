@@ -208,7 +208,7 @@ export function FormationVisualizer({
     if (!formationData) return null
 
     return (
-      <div className="relative w-full h-[400px] bg-green-100 rounded-lg border-2 border-green-200">
+      <div className="relative w-full h-[250px] xs:h-[300px] sm:h-[400px] bg-green-100 rounded-lg border-2 border-green-200">
         {/* Pitch markings */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-[80%] h-[90%] border-2 border-green-300 rounded-lg" />
@@ -232,10 +232,10 @@ export function FormationVisualizer({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center gap-0.5 xs:gap-1">
                         <div 
                           className={cn(
-                            "w-8 h-8 rounded-full bg-white border-2 flex items-center justify-center text-xs font-bold",
+                            "w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-full bg-white border-2 flex items-center justify-center text-[10px] xs:text-xs sm:text-sm font-bold",
                             player ? "border-primary" : "border-gray-300"
                           )}
                         >
@@ -243,12 +243,12 @@ export function FormationVisualizer({
                             <div className="flex items-center">
                               {player.name.substring(0, 2)}
                               {player.is_captain && (
-                                <Star className="h-3 w-3 ml-0.5 fill-yellow-500" />
+                                <Star className="h-2 w-2 xs:h-3 xs:w-3 ml-0.5 fill-yellow-500" />
                               )}
                             </div>
                           ) : '?'}
                         </div>
-                        <span className="text-xs font-medium">{position.substring(0, 3)}</span>
+                        <span className="text-[9px] xs:text-xs font-medium">{position.substring(0, 3)}</span>
                       </div>
                     </TooltipTrigger>
                     {player && (
@@ -278,76 +278,76 @@ export function FormationVisualizer({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-5xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Team Tactics & Formation</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl md:text-2xl">Team Tactics & Formation</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="formation" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="formation">Formation</TabsTrigger>
-            <TabsTrigger value="tactics">Tactics</TabsTrigger>
+            <TabsTrigger value="formation" className="text-xs sm:text-sm h-8 sm:h-10">Formation</TabsTrigger>
+            <TabsTrigger value="tactics" className="text-xs sm:text-sm h-8 sm:h-10">Tactics</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="formation" className="mt-4">
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <h3 className="font-semibold">Select Formation</h3>
-                <div className="space-y-2">
+          <TabsContent value="formation" className="mt-3 sm:mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-8">
+              <div className="space-y-3 sm:space-y-4">
+                <h3 className="font-semibold text-sm sm:text-base">Select Formation</h3>
+                <div className="space-y-1.5 sm:space-y-2">
                   {Object.entries(FORMATIONS).map(([key, data]) => (
                     <Button
                       key={key}
                       variant={formation === key ? "default" : "outline"}
-                      className="w-full justify-start"
+                      className="w-full justify-start h-auto py-1.5 sm:py-3 text-left"
                       onClick={() => onFormationChange(key)}
                     >
                       <div>
-                        <p>{data.name}</p>
-                        <p className="text-xs text-muted-foreground">{data.description}</p>
+                        <p className="text-xs sm:text-base">{data.name}</p>
+                        <p className="text-[10px] xs:text-xs text-muted-foreground">{data.description}</p>
                       </div>
                     </Button>
                   ))}
                 </div>
 
-                <div className="pt-4">
-                  <h3 className="font-semibold mb-2">Substitutes Bench</h3>
+                <div className="pt-2 sm:pt-4">
+                  <h3 className="font-semibold mb-1.5 sm:mb-2 text-sm sm:text-base">Substitutes Bench</h3>
                   <Card>
-                    <CardHeader className="py-2">
+                    <CardHeader className="py-1.5 sm:py-2 px-2 sm:px-4">
                       <div className="flex justify-between items-center">
-                        <CardTitle className="text-sm">Bench Players</CardTitle>
-                        <Badge variant="outline">{substitutes.length} Players</Badge>
+                        <CardTitle className="text-xs sm:text-sm">Bench Players</CardTitle>
+                        <Badge variant="outline" className="text-[10px] xs:text-xs">{substitutes.length} Players</Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-2">
+                    <CardContent className="p-1.5 sm:p-2">
                       {substitutes.length === 0 ? (
-                        <div className="text-center py-4 text-muted-foreground">
-                          <UserX className="h-8 w-8 mx-auto mb-2" />
-                          <p>No substitutes selected</p>
-                          <p className="text-xs">All players are in the starting XI</p>
+                        <div className="text-center py-3 sm:py-4 text-muted-foreground">
+                          <UserX className="h-5 w-5 sm:h-8 sm:w-8 mx-auto mb-1.5 sm:mb-2" />
+                          <p className="text-xs sm:text-sm">No substitutes selected</p>
+                          <p className="text-[10px] xs:text-xs">All players are in the starting XI</p>
                         </div>
                       ) : (
-                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                        <div className="space-y-1.5 sm:space-y-2 max-h-[150px] xs:max-h-[200px] sm:max-h-[300px] overflow-y-auto pr-1 sm:pr-2">
                           {substitutes.map(player => (
                             <div
                               key={player.id}
-                              className="flex items-center justify-between p-2 bg-muted rounded-lg"
+                              className="flex items-center justify-between p-1.5 sm:p-2 bg-muted rounded-lg"
                             >
                               <div>
-                                <p className="font-medium">{player.name}</p>
-                                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                                <p className="font-medium text-[10px] xs:text-xs sm:text-sm">{player.name}</p>
+                                <div className="flex items-center space-x-1 sm:space-x-2 text-[9px] xs:text-xs text-muted-foreground">
                                   <span>{player.position}</span>
                                   <span>•</span>
                                   <span>{player.team}</span>
                                   {player.is_captain && (
-                                    <Badge variant="secondary" className="text-xs">C</Badge>
+                                    <Badge variant="secondary" className="text-[8px] xs:text-xs">C</Badge>
                                   )}
                                   {player.is_vice_captain && (
-                                    <Badge variant="secondary" className="text-xs">VC</Badge>
+                                    <Badge variant="secondary" className="text-[8px] xs:text-xs">VC</Badge>
                                   )}
                                 </div>
                               </div>
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <UserX className="h-3 w-3" />
+                              <Badge variant="outline" className="flex items-center gap-1 text-[9px] xs:text-xs">
+                                <UserX className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                 <span>Sub</span>
                               </Badge>
                             </div>
@@ -360,10 +360,10 @@ export function FormationVisualizer({
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold">Formation Preview</h3>
-                  <Badge variant="default" className="flex items-center gap-1">
-                    <UserCheck className="h-3 w-3" />
+                <div className="flex justify-between items-center mb-2 sm:mb-4">
+                  <h3 className="font-semibold text-sm sm:text-base">Formation Preview</h3>
+                  <Badge variant="default" className="flex items-center gap-1 text-[9px] xs:text-xs">
+                    <UserCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     <span>Starting XI: {starters.length}/11</span>
                   </Badge>
                 </div>
@@ -372,24 +372,26 @@ export function FormationVisualizer({
             </div>
           </TabsContent>
 
-          <TabsContent value="tactics" className="mt-4">
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-6">
+          <TabsContent value="tactics" className="mt-3 sm:mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-8">
+              <div className="space-y-3 sm:space-y-6">
                 <div>
-                  <h3 className="font-semibold mb-2">Playing Style</h3>
-                  <div className="space-y-2">
+                  <h3 className="font-semibold mb-1.5 sm:mb-2 text-sm sm:text-base">Playing Style</h3>
+                  <div className="space-y-1.5 sm:space-y-2">
                     {Object.entries(PLAYING_STYLES).map(([key, style]) => (
                       <Button
                         key={key}
                         variant={selectedStyle === key ? "default" : "outline"}
-                        className="w-full justify-start"
+                        className="w-full justify-start h-auto py-1.5 sm:py-3 text-left"
                         onClick={() => handleTacticsChange(key as keyof typeof PLAYING_STYLES)}
                       >
-                        <div className="flex items-center gap-2">
-                          {style.icon}
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <div className="shrink-0 text-[10px] sm:text-base">
+                            {style.icon}
+                          </div>
                           <div>
-                            <p>{style.name}</p>
-                            <p className="text-xs text-muted-foreground">{style.description}</p>
+                            <p className="text-xs sm:text-base">{style.name}</p>
+                            <p className="text-[10px] xs:text-xs text-muted-foreground">{style.description}</p>
                           </div>
                         </div>
                       </Button>
@@ -398,7 +400,7 @@ export function FormationVisualizer({
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Team Mentality</h3>
+                  <h3 className="font-semibold mb-1.5 sm:mb-2 text-sm sm:text-base">Team Mentality</h3>
                   <Select 
                     value={mentality} 
                     onValueChange={(value) => handleTacticsChange(
@@ -406,12 +408,12 @@ export function FormationVisualizer({
                       value as typeof TEAM_MENTALITIES[number]
                     )}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                       <SelectValue placeholder="Select team mentality" />
                     </SelectTrigger>
                     <SelectContent>
                       {TEAM_MENTALITIES.map((m) => (
-                        <SelectItem key={m} value={m}>
+                        <SelectItem key={m} value={m} className="text-xs sm:text-sm">
                           {m}
                         </SelectItem>
                       ))}
@@ -420,24 +422,26 @@ export function FormationVisualizer({
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-3 sm:space-y-6">
                 <div>
-                  <h3 className="font-semibold mb-2">Tactical Recommendations</h3>
+                  <h3 className="font-semibold mb-1.5 sm:mb-2 text-sm sm:text-base">Tactical Recommendations</h3>
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        {PLAYING_STYLES[selectedStyle].icon}
+                    <CardHeader className="py-2 sm:py-4 px-3 sm:px-6">
+                      <CardTitle className="text-sm sm:text-lg flex items-center gap-1.5 sm:gap-2">
+                        <div className="shrink-0 text-[10px] sm:text-base">
+                          {PLAYING_STYLES[selectedStyle].icon}
+                        </div>
                         {PLAYING_STYLES[selectedStyle].name}
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-[10px] xs:text-xs sm:text-sm">
                         {PLAYING_STYLES[selectedStyle].description}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
+                    <CardContent className="px-3 sm:px-6 py-2 sm:py-3">
+                      <ul className="space-y-1.5 sm:space-y-2">
                         {PLAYING_STYLES[selectedStyle].recommendations.map((rec, index) => (
-                          <li key={index} className="flex items-center gap-2">
-                            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                          <li key={index} className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-xs sm:text-sm">
+                            <div className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-primary" />
                             {rec}
                           </li>
                         ))}
@@ -447,15 +451,15 @@ export function FormationVisualizer({
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Current Setup</h3>
-                  <div className="p-4 bg-muted rounded-lg space-y-2">
-                    <p className="text-sm">
+                  <h3 className="font-semibold mb-1.5 sm:mb-2 text-sm sm:text-base">Current Setup</h3>
+                  <div className="p-2 sm:p-4 bg-muted rounded-lg space-y-1.5 sm:space-y-2">
+                    <p className="text-[10px] xs:text-xs sm:text-sm">
                       <span className="font-medium">Formation:</span> {FORMATIONS[formation].name}
                     </p>
-                    <p className="text-sm">
+                    <p className="text-[10px] xs:text-xs sm:text-sm">
                       <span className="font-medium">Playing Style:</span> {PLAYING_STYLES[selectedStyle].name}
                     </p>
-                    <p className="text-sm">
+                    <p className="text-[10px] xs:text-xs sm:text-sm">
                       <span className="font-medium">Mentality:</span> {mentality}
                     </p>
                   </div>

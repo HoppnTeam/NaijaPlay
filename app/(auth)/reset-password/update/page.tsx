@@ -27,10 +27,10 @@ export default function UpdatePasswordPage() {
     // Check if we have a session when the component mounts
     const checkSession = async () => {
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { user } } = await supabase.auth.getUser()
       
-      // If no session, redirect to login
-      if (!session) {
+      // If no user, redirect to login
+      if (!user) {
         router.push('/login')
       }
     }

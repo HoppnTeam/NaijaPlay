@@ -14,10 +14,10 @@ export default async function DashboardLayout({
   const supabase = createServerComponentClient<Database>({ cookies })
 
   const {
-    data: { session }
-  } = await supabase.auth.getSession()
+    data: { user }
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect('/login')
   }
 
@@ -25,7 +25,7 @@ export default async function DashboardLayout({
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const isAdmin = profile?.role === 'admin'

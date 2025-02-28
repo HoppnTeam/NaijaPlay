@@ -807,8 +807,8 @@ export default async function GameweekPage({ searchParams }: { searchParams: { i
         .from('gameweeks')
         .select('*')
         .order('number', { ascending: false })
-        .limit(1)
-      
+    .limit(1)
+
       if (recentData && recentData.length > 0) {
         currentGameweek = recentData[0]
       }
@@ -876,13 +876,13 @@ export default async function GameweekPage({ searchParams }: { searchParams: { i
         </TabsList>
         
         <TabsContent value="overview" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <GameweekStatus gameweek={currentGameweek} matches={matches} error={gameweekError} />
-            <TeamStats stats={teamStats} error={teamStatsError} />
+        <TeamStats stats={teamStats} error={teamStatsError} />
             <div className="md:col-span-2 lg:col-span-3">
               <MatchList matches={matches} error={matchesError} />
             </div>
-          </div>
+      </div>
         </TabsContent>
         
         <TabsContent value="matches" className="mt-6">

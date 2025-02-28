@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { Database } from '@/types/supabase'
 import { rateLimit } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
@@ -16,17 +15,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user session
-    const supabase = createRouteHandlerClient<Database>({ cookies })
-    const { data: { session } } = await supabase.auth.getSession()
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Fetch active challenges with user progress
     const { data: challenges, error } = await supabase
@@ -154,17 +153,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user session
-    const supabase = createRouteHandlerClient<Database>({ cookies })
-    const { data: { session } } = await supabase.auth.getSession()
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Get request body
     const body = await req.json()

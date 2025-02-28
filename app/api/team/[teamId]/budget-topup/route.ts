@@ -1,26 +1,24 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
-import { createRateLimiter } from '@/lib/rate-limit'
+import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
   try {
     // Rate limiting
-    const limiter = await createRateLimiter('budget_topup')
-    const { success, limit, reset, remaining } = await limiter.limit()
-    
-    if (!success) {
+    const limiter = await rateLimit(req, 5, '1m')
+    if (!limiter.success) {
       return NextResponse.json(
         { error: 'Rate limit exceeded' },
         { 
           status: 429,
           headers: {
-            'X-RateLimit-Limit': limit.toString(),
-            'X-RateLimit-Remaining': remaining.toString(),
-            'X-RateLimit-Reset': reset.toString()
+            'X-RateLimit-Limit': limiter.limit.toString(),
+            'X-RateLimit-Remaining': limiter.remaining.toString(),
+            'X-RateLimit-Reset': limiter.reset.toString()
           }
         }
       )
@@ -29,8 +27,8 @@ export async function POST(
     const supabase = createRouteHandlerClient({ cookies })
     
     // Get user session
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -53,7 +51,7 @@ export async function POST(
       .from('teams')
       .select('*')
       .eq('id', params.teamId)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .single()
     
     if (teamError || !team) {
@@ -67,7 +65,7 @@ export async function POST(
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('tokens')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
     
     if (profileError || !profile) {
@@ -91,7 +89,7 @@ export async function POST(
     // Begin transaction
     const { data: transaction, error: transactionError } = await supabase
       .rpc('use_tokens_for_budget', {
-        p_user_id: session.user.id,
+        p_user_id: user.id,
         p_team_id: params.teamId,
         p_token_amount: tokenAmount,
         p_budget_increase: budgetIncrease

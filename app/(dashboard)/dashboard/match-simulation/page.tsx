@@ -19,8 +19,8 @@ export default async function MatchSimulationPage() {
   const supabase = createServerComponentClient({ cookies })
   
   // Check if user is authenticated
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
     redirect('/login')
   }
 

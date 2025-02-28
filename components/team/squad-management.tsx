@@ -14,7 +14,27 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { FormationVisualizer } from "@/components/team/formation-visualizer"
 import { SquadList } from "@/components/team/squad-list"
-import { Database } from '@/types/supabase'
+
+// Define Database type for Supabase client
+type Database = {
+  public: {
+    Tables: {
+      teams: {
+        Row: {
+          id: string
+          [key: string]: any
+        }
+      }
+      players: {
+        Row: {
+          id: string
+          [key: string]: any
+        }
+      }
+      [key: string]: any
+    }
+  }
+}
 
 interface Player {
   id: string
@@ -49,7 +69,15 @@ interface TransferMarketPlayer {
   name: string
   position: string
   team: string
+  league: string
   current_price: number
+  base_price: number
+  is_available: boolean
+  form_rating?: number
+  ownership_percent?: number
+  minutes_played?: number
+  goals_scored?: number
+  assists?: number
 }
 
 interface SquadManagementProps {
@@ -195,7 +223,7 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
     }
   }
 
-  const handlePlayerAdded = async (newPlayer: Player) => {
+  const handlePlayerAdded = async (newPlayer: TransferMarketPlayer) => {
     try {
       setLoading(true)
       
@@ -218,7 +246,31 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
 
       // Call the parent's onPlayerAdded if it exists
       if (onPlayerAdded) {
-        onPlayerAdded(newPlayer)
+        // Convert TransferMarketPlayer to Player if needed
+        const playerData: Player = {
+          id: newPlayer.id,
+          name: newPlayer.name,
+          position: newPlayer.position,
+          team: newPlayer.team,
+          league: newPlayer.league || '',
+          current_price: newPlayer.current_price,
+          base_price: newPlayer.base_price || newPlayer.current_price,
+          minutes_played: 0,
+          goals_scored: 0,
+          assists: 0,
+          clean_sheets: 0,
+          goals_conceded: 0,
+          own_goals: 0,
+          penalties_saved: 0,
+          penalties_missed: 0,
+          yellow_cards: 0,
+          red_cards: 0,
+          saves: 0,
+          bonus: 0,
+          form_rating: 0,
+          ownership_percent: 0
+        };
+        onPlayerAdded(playerData);
       }
       
       toast({
@@ -407,27 +459,27 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Squad Management</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Squad Management</h2>
+          <p className="text-sm text-muted-foreground">
             Manage your team, view player stats, and make transfers
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Button
             variant="outline"
             onClick={() => setShowFormation(true)}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
             disabled={loading}
           >
             <Layout className="h-4 w-4" />
             View Formation
           </Button>
-          <div className="text-right">
+          <div className="text-left sm:text-right w-full sm:w-auto">
             <p className="text-sm text-muted-foreground">Available Budget</p>
-            <p className="text-2xl font-bold">{formatNaira(currentBudget)}</p>
+            <p className="text-xl sm:text-2xl font-bold">{formatNaira(currentBudget)}</p>
           </div>
         </div>
       </div>
@@ -445,16 +497,17 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
       />
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle>Current Squad</CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="ml-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <Badge variant="outline" className="sm:ml-2">
               Starting: {startingPlayerIds.length}/11
             </Badge>
             <Button 
               onClick={handleSaveStartingLineup} 
               disabled={savingLineup || startingPlayerIds.length !== 11}
               size="sm"
+              className="w-full sm:w-auto"
             >
               {savingLineup ? (
                 <>
@@ -473,47 +526,50 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
         <CardContent>
           <div className="grid gap-4">
             {squadPlayers.map((player) => (
-              <div key={player.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
+              <div key={player.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg">
+                <div className="flex items-center space-x-4 mb-3 sm:mb-0">
                   <div>
                     <p className="font-medium">{player.name}</p>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
                       <span>{player.position}</span>
-                      <span>•</span>
+                      <span className="hidden sm:inline">•</span>
                       <span>{player.team}</span>
                       {player.is_captain && (
-                        <Badge variant="secondary">Captain</Badge>
+                        <Badge variant="secondary" className="text-xs">Captain</Badge>
                       )}
                       {player.is_vice_captain && (
-                        <Badge variant="secondary">Vice Captain</Badge>
+                        <Badge variant="secondary" className="text-xs">Vice Captain</Badge>
                       )}
                       {player.is_for_sale && (
-                        <Badge variant="secondary">For Sale</Badge>
+                        <Badge variant="secondary" className="text-xs">For Sale</Badge>
                       )}
                       {startingPlayerIds.includes(player.id) ? (
-                        <Badge variant="default">Starting XI</Badge>
+                        <Badge variant="default" className="text-xs">Starting XI</Badge>
                       ) : (
-                        <Badge variant="outline">Substitute</Badge>
+                        <Badge variant="outline" className="text-xs">Substitute</Badge>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                   <Button
                     variant={startingPlayerIds.includes(player.id) ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleToggleStartingPlayer(player.id)}
                     disabled={loading}
+                    className="h-9"
                   >
                     {startingPlayerIds.includes(player.id) ? (
                       <>
                         <UserCheck className="h-4 w-4 mr-1" />
-                        Starting
+                        <span className="hidden sm:inline">Starting</span>
+                        <span className="sm:hidden">Start</span>
                       </>
                     ) : (
                       <>
                         <UserX className="h-4 w-4 mr-1" />
-                        Substitute
+                        <span className="hidden sm:inline">Substitute</span>
+                        <span className="sm:hidden">Sub</span>
                       </>
                     )}
                   </Button>
@@ -522,27 +578,33 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
                     size="sm"
                     onClick={() => handleSetCaptain(player.id)}
                     disabled={loading || player.is_captain}
+                    className="h-9"
                   >
                     <Star className="h-4 w-4 mr-1" />
-                    Make Captain
+                    <span className="hidden sm:inline">Make Captain</span>
+                    <span className="sm:hidden">Captain</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleSetViceCaptain(player.id)}
                     disabled={loading || player.is_vice_captain}
+                    className="h-9"
                   >
                     <Star className="h-4 w-4 mr-1" />
-                    Make Vice Captain
+                    <span className="hidden sm:inline">Make Vice Captain</span>
+                    <span className="sm:hidden">Vice</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleListForSale(player.id)}
                     disabled={loading || player.is_for_sale}
+                    className="h-9"
                   >
                     <Tag className="h-4 w-4 mr-1" />
-                    List for Sale
+                    <span className="hidden sm:inline">List for Sale</span>
+                    <span className="sm:hidden">Sell</span>
                   </Button>
                 </div>
               </div>
@@ -553,11 +615,11 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
 
       <Tabs defaultValue="squad" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="squad" className="text-base">
+          <TabsTrigger value="squad" className="text-sm sm:text-base py-3">
             <Users className="h-4 w-4 mr-2" />
             Squad List
           </TabsTrigger>
-          <TabsTrigger value="transfer" className="text-base">
+          <TabsTrigger value="transfer" className="text-sm sm:text-base py-3">
             <ShoppingCart className="h-4 w-4 mr-2" />
             Transfer Market
           </TabsTrigger>
@@ -587,7 +649,7 @@ export function SquadManagement({ teamId, budget, players, onPlayerAdded }: Squa
           <TransferMarket 
             teamId={teamId} 
             budget={currentBudget}
-            onPlayerAdded={handlePlayerAdded}
+            onPlayerAdded={(player) => handlePlayerAdded(player)}
           />
         </TabsContent>
       </Tabs>

@@ -12,9 +12,9 @@ export function useProfile() {
 
     async function loadProfile() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user } } = await supabase.auth.getUser()
         
-        if (!session?.user) {
+        if (!user) {
           setProfile(null)
           return
         }
@@ -22,7 +22,7 @@ export function useProfile() {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .single()
 
         if (error) throw error

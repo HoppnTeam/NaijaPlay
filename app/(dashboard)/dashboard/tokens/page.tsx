@@ -26,10 +26,10 @@ export default async function TokensPage() {
   
   // Get authenticated user
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect('/login')
   }
 
@@ -37,7 +37,7 @@ export default async function TokensPage() {
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('tokens')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   // If there's an error fetching the profile, initialize with 0 tokens

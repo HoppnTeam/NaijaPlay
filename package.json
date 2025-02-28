@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "NODE_NO_WARNINGS=1 next build",
+    "dev": "NODE_OPTIONS=\"--require ./scripts/node-wrapper.js\" next dev",
+    "build": "NODE_OPTIONS=\"--require ./scripts/node-wrapper.js\" next build",
     "start": "next start",
     "lint": "next lint",
     "update-types": "supabase gen types typescript --project-id rpqvknglzmzlycptgvhu > lib/database.types.ts",
@@ -21,7 +21,9 @@
     "supabase:check-schema": "node scripts/check-schema.js",
     "supabase:reset": "supabase db reset",
     "supabase:new-migration": "supabase migration new",
-    "supabase:check-env": "node scripts/check-env.js"
+    "supabase:check-env": "node scripts/check-env.js",
+    "check-punycode": "node scripts/check-punycode-usage.js",
+    "test-wallet": "node scripts/test-wallet-api.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -138,7 +138,38 @@ export async function GET(request: Request) {
 
     const supabase = createRouteHandlerClient({ cookies })
 
+    // Get the transaction record first
+    const { data: transaction, error: transactionError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', reference)
+      .single()
+
+    if (transactionError || !transaction) {
+      console.error('Transaction not found:', transactionError)
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if transaction is already completed
+    if (transaction.status === 'completed') {
+      return NextResponse.json({ 
+        success: true,
+        message: 'Payment already verified and processed'
+      })
+    }
+
     // Verify transaction with Paystack
+    if (!PAYSTACK_SECRET_KEY) {
+      console.error('PAYSTACK_SECRET_KEY is not configured')
+      return NextResponse.json(
+        { error: 'Payment service is not configured' },
+        { status: 500 }
+      )
+    }
+
     const response = await fetch(`${PAYSTACK_API}/transaction/verify/${reference}`, {
       headers: {
         'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
@@ -148,10 +179,18 @@ export async function GET(request: Request) {
     const verificationData = await response.json()
 
     if (!response.ok || !verificationData.status) {
+      console.error('Paystack verification failed:', verificationData)
+      
       // Update transaction status to failed
       await supabase
         .from('transactions')
-        .update({ status: 'failed' })
+        .update({ 
+          status: 'failed',
+          metadata: {
+            ...transaction.metadata,
+            paystack_error: verificationData
+          }
+        })
         .eq('id', reference)
 
       return NextResponse.json(
@@ -160,17 +199,23 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get the transaction record
-    const { data: transaction } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('id', reference)
-      .single()
+    // Check if payment was successful according to Paystack
+    if (verificationData.data.status !== 'success') {
+      await supabase
+        .from('transactions')
+        .update({ 
+          status: 'failed',
+          metadata: {
+            ...transaction.metadata,
+            paystack_status: verificationData.data.status,
+            paystack_reference: verificationData.data.reference
+          }
+        })
+        .eq('id', reference)
 
-    if (!transaction) {
       return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
+        { error: 'Payment was not successful' },
+        { status: 400 }
       )
     }
 
@@ -196,7 +241,9 @@ export async function GET(request: Request) {
         status: 'completed',
         metadata: {
           ...transaction.metadata,
-          paystack_reference: verificationData.data.reference
+          paystack_reference: verificationData.data.reference,
+          paystack_status: verificationData.data.status,
+          verification_time: new Date().toISOString()
         }
       })
       .eq('id', reference)
@@ -209,7 +256,10 @@ export async function GET(request: Request) {
       )
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true,
+      message: 'Payment verified and wallet updated successfully'
+    })
 
   } catch (error) {
     console.error('Error in verify route:', error)

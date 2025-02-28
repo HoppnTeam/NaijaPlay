@@ -39,10 +39,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Database } from '@/types/supabase'
 import { cn } from "@/lib/utils"
 import { 
-  TransferMarketPlayer, 
+  TransferMarketPlayer as ImportedTransferMarketPlayer, 
   POSITION_REQUIREMENTS, 
   isValidPosition,
   getPlayerName,
@@ -50,6 +49,50 @@ import {
 } from '@/types/squad'
 import { supabase } from '@/lib/supabase/client'
 import { useSquadData } from '@/hooks/use-squad-data'
+
+// Extend the imported interface to ensure all required properties are available
+interface TransferMarketPlayer extends ImportedTransferMarketPlayer {
+  id: string
+  name: string
+  position: string
+  team: string
+  league: string
+  current_price: number
+  base_price: number
+  form_rating: number
+  ownership_percent: number
+  minutes_played: number
+  goals_scored: number
+  assists: number
+  is_available: boolean
+}
+
+// Define Database type for Supabase client
+type Database = {
+  public: {
+    Tables: {
+      players: {
+        Row: {
+          id: string
+          name: string
+          position: string
+          team: string
+          league: string
+          current_price: number
+          base_price: number
+          form_rating: number
+          ownership_percent: number
+          minutes_played: number
+          goals_scored: number
+          assists: number
+          is_available: boolean
+          [key: string]: any
+        }
+      }
+      [key: string]: any
+    }
+  }
+}
 
 // Utility functions
 const formatNaira = (amount: number) => {
@@ -95,24 +138,24 @@ function PlayerCard({
 }) {
   return (
     <Card className="hover:shadow-lg transition-shadow">
-      <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
+      <CardContent className="p-2 xs:p-3 sm:p-4">
+        <div className="space-y-2 xs:space-y-3 sm:space-y-4">
+          <div className="flex items-start justify-between gap-1 xs:gap-2 sm:gap-4">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate">
+              <h3 className="font-semibold text-sm xs:text-base sm:text-lg truncate">
                 {getPlayerName(player)}
               </h3>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-0.5 xs:gap-1 sm:gap-2 mt-0.5 xs:mt-1">
                 <Badge className={cn(
                   getPositionColor(player.position),
-                  "w-24 justify-center"
+                  "text-[10px] xs:text-xs sm:text-sm px-1 py-0 xs:py-0.5"
                 )}>
                   {player.position}
                 </Badge>
-                <Badge variant="outline" className="w-24 justify-center">
+                <Badge variant="outline" className="text-[10px] xs:text-xs sm:text-sm px-1 py-0 xs:py-0.5">
                   {player.team}
                 </Badge>
-                <Badge variant="secondary" className="w-16 justify-center">
+                <Badge variant="secondary" className="text-[10px] xs:text-xs sm:text-sm px-1 py-0 xs:py-0.5">
                   {player.league}
                 </Badge>
               </div>
@@ -120,7 +163,7 @@ function PlayerCard({
             <PlayerPrice player={player} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 xs:gap-3 sm:gap-4">
             <PlayerStat
               label="Form"
               value={player.form_rating}
@@ -136,7 +179,7 @@ function PlayerCard({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="grid grid-cols-3 gap-1 sm:gap-2 text-[10px] xs:text-xs">
             <PlayerStat
               label="Minutes"
               value={player.minutes_played}
@@ -158,18 +201,18 @@ function PlayerCard({
           </div>
 
           <Button 
-            className="w-full" 
+            className="w-full h-8 xs:h-9 sm:h-10 text-xs xs:text-sm" 
             onClick={onSign}
             disabled={isLoading || insufficientBudget}
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-3 w-3 xs:h-4 xs:w-4 animate-spin mr-1 xs:mr-2" />
             ) : (
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-3 w-3 xs:h-4 xs:w-4 mr-1 xs:mr-2" />
             )}
             Sign Player
             {insufficientBudget && (
-              <AlertTriangle className="h-4 w-4 ml-2 text-yellow-500" />
+              <AlertTriangle className="h-3 w-3 xs:h-4 xs:w-4 ml-1 xs:ml-2 text-yellow-500" />
             )}
           </Button>
         </div>
@@ -185,21 +228,21 @@ function PlayerPrice({ player }: { player: TransferMarketPlayer }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <div>
-            <div className="text-lg font-bold whitespace-nowrap">
+            <div className="text-sm xs:text-base sm:text-lg font-bold whitespace-nowrap">
               {formatNaira(player.current_price)}
             </div>
             {player.current_price !== player.base_price && (
-              <div className="flex items-center justify-end gap-1 text-sm whitespace-nowrap">
+              <div className="flex items-center justify-end gap-0.5 xs:gap-1 text-[10px] xs:text-xs sm:text-sm whitespace-nowrap">
                 {player.current_price > player.base_price ? (
                   <>
-                    <TrendingUp className="h-4 w-4 text-green-500 shrink-0" />
+                    <TrendingUp className="h-3 w-3 xs:h-4 xs:w-4 text-green-500 shrink-0" />
                     <span className="text-green-500">
                       +{((player.current_price - player.base_price) / player.base_price * 100).toFixed(1)}%
                     </span>
                   </>
                 ) : (
                   <>
-                    <TrendingDown className="h-4 w-4 text-red-500 shrink-0" />
+                    <TrendingDown className="h-3 w-3 xs:h-4 xs:w-4 text-red-500 shrink-0" />
                     <span className="text-red-500">
                       {((player.current_price - player.base_price) / player.base_price * 100).toFixed(1)}%
                     </span>
@@ -210,7 +253,7 @@ function PlayerPrice({ player }: { player: TransferMarketPlayer }) {
           </div>
         </TooltipTrigger>
         <TooltipContent side="left">
-          <p>Base Price: {formatNaira(player.base_price)}</p>
+          <p className="text-xs xs:text-sm">Base Price: {formatNaira(player.base_price)}</p>
         </TooltipContent>
       </Tooltip>
     </div>
@@ -237,24 +280,24 @@ function PlayerStat({
 }) {
   if (compact) {
     return (
-      <div className="bg-muted rounded p-2">
-        <div className="text-muted-foreground flex items-center gap-1">
-          {Icon && <Icon className="h-3 w-3" />}
+      <div className="bg-muted rounded p-1 xs:p-1.5 sm:p-2">
+        <div className="text-muted-foreground flex items-center gap-0.5 xs:gap-1 text-[9px] xs:text-[10px] sm:text-xs">
+          {Icon && <Icon className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-3 sm:w-3" />}
           {label}
         </div>
-        <div className="font-medium">{value}</div>
+        <div className="font-medium text-[10px] xs:text-xs sm:text-sm">{value}</div>
       </div>
     )
   }
 
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="flex items-center gap-2">
+      <p className="text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-1 xs:gap-2">
         {showProgress && (
-          <Progress value={progressValue} className="h-2" />
+          <Progress value={progressValue} className="h-1.5 xs:h-2" />
         )}
-        <span className="text-sm font-medium">
+        <span className="text-[10px] xs:text-xs sm:text-sm font-medium">
           {value?.toFixed(1)}{suffix}
         </span>
       </div>
@@ -287,59 +330,61 @@ function SearchFilters({
   onSortOrderChange: (value: 'asc' | 'desc') => void
 }) {
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
-      <div className="flex-1">
+    <div className="flex flex-col gap-2 xs:gap-3 sm:gap-4">
+      <div className="w-full">
         <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2 top-2 xs:top-2.5 h-3.5 w-3.5 xs:h-4 xs:w-4 text-muted-foreground" />
           <Input
             placeholder="Search players..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-8"
+            className="pl-7 xs:pl-8 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
           />
         </div>
       </div>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 xs:gap-2">
         <Select value={position} onValueChange={onPositionChange}>
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-full h-8 xs:h-9 sm:h-10 text-xs xs:text-sm">
             <SelectValue placeholder="Position" />
           </SelectTrigger>
           <SelectContent>
             {POSITIONS.map((pos) => (
-              <SelectItem key={pos} value={pos}>
+              <SelectItem key={pos} value={pos} className="text-xs xs:text-sm">
                 {pos}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={league} onValueChange={onLeagueChange}>
-          <SelectTrigger className="w-[100px]">
+          <SelectTrigger className="w-full h-8 xs:h-9 sm:h-10 text-xs xs:text-sm">
             <SelectValue placeholder="League" />
           </SelectTrigger>
           <SelectContent>
             {LEAGUES.map((l) => (
-              <SelectItem key={l} value={l}>
+              <SelectItem key={l} value={l} className="text-xs xs:text-sm">
                 {l}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={(value) => onSortByChange(value as 'price' | 'form' | 'ownership')}>
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-full h-8 xs:h-9 sm:h-10 text-xs xs:text-sm">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="price">Price</SelectItem>
-            <SelectItem value="form">Form</SelectItem>
-            <SelectItem value="ownership">Ownership</SelectItem>
+            <SelectItem value="price" className="text-xs xs:text-sm">Price</SelectItem>
+            <SelectItem value="form" className="text-xs xs:text-sm">Form</SelectItem>
+            <SelectItem value="ownership" className="text-xs xs:text-sm">Ownership</SelectItem>
           </SelectContent>
         </Select>
         <Button
           variant="outline"
-          size="icon"
+          className="w-full h-8 xs:h-9 sm:h-10 flex items-center justify-center gap-1 xs:gap-2 text-xs xs:text-sm"
           onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
         >
-          {sortOrder === 'asc' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+          {sortOrder === 'asc' ? <TrendingUp className="h-3 w-3 xs:h-4 xs:w-4" /> : <TrendingDown className="h-3 w-3 xs:h-4 xs:w-4" />}
+          <span className="hidden xs:inline">{sortOrder === 'asc' ? 'Asc' : 'Desc'}</span>
+          <span className="hidden sm:inline">{sortOrder === 'asc' ? 'ending' : 'ending'}</span>
         </Button>
       </div>
     </div>
@@ -564,12 +609,13 @@ export function TransferMarket({ teamId, budget: initialBudget, onPlayerAdded }:
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Transfer Market</CardTitle>
+      <div className="space-y-4 xs:space-y-5 sm:space-y-6">
+        <Card className="overflow-hidden">
+          <CardHeader className="px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-6">
+            <CardTitle className="text-lg xs:text-xl sm:text-2xl">Transfer Market</CardTitle>
+            <p className="text-xs xs:text-sm text-muted-foreground mt-0.5 xs:mt-1">Available Budget: {formatNaira(budget)}</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 xs:px-4 sm:px-6 pb-4 xs:pb-5 sm:pb-6">
             <SearchFilters
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -584,15 +630,15 @@ export function TransferMarket({ teamId, budget: initialBudget, onPlayerAdded }:
             />
 
             {loading ? (
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
+              <div className="flex items-center justify-center p-4 xs:p-6 sm:p-8">
+                <Loader2 className="h-6 w-6 xs:h-7 xs:w-7 sm:h-8 sm:w-8 animate-spin" />
               </div>
             ) : players.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No players found</p>
+              <div className="text-center py-4 xs:py-6 sm:py-8">
+                <p className="text-xs xs:text-sm text-muted-foreground">No players found</p>
               </div>
             ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2 xs:gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 mt-3 xs:mt-4 sm:mt-6">
               {players.map((player) => (
                   <PlayerCard
                     key={player.id}
@@ -606,25 +652,27 @@ export function TransferMarket({ teamId, budget: initialBudget, onPlayerAdded }:
             )}
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-4">
+              <div className="flex items-center justify-center gap-2 xs:gap-3 sm:gap-4 mt-4 xs:mt-5 sm:mt-6">
                   <Button
                     variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                    size="sm"
+                    className="h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 p-0"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4 xs:h-4.5 xs:w-4.5 sm:h-5 sm:w-5" />
                   </Button>
-                <span className="text-sm">
+                <span className="text-xs xs:text-sm font-medium">
                     Page {currentPage} of {totalPages}
                 </span>
                   <Button
                     variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                    size="sm"
+                    className="h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 p-0"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 xs:h-4.5 xs:w-4.5 sm:h-5 sm:w-5" />
                   </Button>
               </div>
             )}

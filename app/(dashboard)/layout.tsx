@@ -96,7 +96,7 @@ export default async function DashboardLayout({
     return (
       <div className="min-h-screen bg-background">
         <NavClient profile={profile} />
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
           <div className="animate-in fade-in duration-500">
             {children}
           </div>
