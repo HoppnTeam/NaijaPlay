@@ -1,104 +1,201 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import * as z from 'zod'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { Loader2, Save, ArrowLeft } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
 import Link from 'next/link'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-
-// Define the schema for gameweek validation
-const gameweekSchema = z.object({
-  number: z.coerce.number().int().positive('Gameweek number must be positive'),
-  start_date: z.string().min(1, 'Start date is required'),
-  end_date: z.string().min(1, 'End date is required'),
-  status: z.enum(['upcoming', 'in_progress', 'completed'], {
-    required_error: 'Please select a status',
-  }),
-})
-
-type GameweekFormValues = z.infer<typeof gameweekSchema>
 
 interface GameweekFormProps {
-  initialData?: {
-    id: string
-    number: number
-    start_date: string
-    end_date: string
-    status: 'upcoming' | 'in_progress' | 'completed'
-  }
+  gameweekId?: string
 }
 
-export default function GameweekForm({ initialData }: GameweekFormProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  
-  // Initialize form with default values or initial data
-  const form = useForm<GameweekFormValues>({
-    resolver: zodResolver(gameweekSchema),
-    defaultValues: initialData ? {
-      number: initialData.number,
-      start_date: new Date(initialData.start_date).toISOString().split('T')[0],
-      end_date: new Date(initialData.end_date).toISOString().split('T')[0],
-      status: initialData.status,
-    } : {
-      number: 1,
-      start_date: '',
-      end_date: '',
-      status: 'upcoming',
-    },
-  })
+interface GameweekFormData {
+  number: number
+  start_date: string
+  end_date: string
+  status: 'upcoming' | 'in_progress' | 'completed'
+}
 
-  async function onSubmit(data: GameweekFormValues) {
-    setIsLoading(true)
-    
+export function GameweekForm({ gameweekId }: GameweekFormProps) {
+  const [formData, setFormData] = useState<GameweekFormData>({
+    number: 1,
+    start_date: '',
+    end_date: '',
+    status: 'upcoming',
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
+  const supabase = createClient()
+  const isEditing = !!gameweekId
+
+  useEffect(() => {
+    if (isEditing) {
+      fetchGameweek()
+    } else {
+      // For new gameweeks, set default dates to current week
+      const today = new Date()
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(today.getDate() - today.getDay()) // Sunday
+      
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday
+      
+      setFormData({
+        ...formData,
+        start_date: startOfWeek.toISOString().split('T')[0],
+        end_date: endOfWeek.toISOString().split('T')[0],
+      })
+      
+      // Get the next gameweek number
+      fetchNextGameweekNumber()
+    }
+  }, [gameweekId])
+
+  const fetchGameweek = async () => {
     try {
-      const endpoint = initialData 
-        ? `/api/gameweeks/${initialData.id}` 
-        : '/api/gameweeks'
+      setIsFetching(true)
+      const { data, error } = await supabase
+        .from('gameweeks')
+        .select('*')
+        .eq('id', gameweekId)
+        .single()
+
+      if (error) throw error
       
-      const method = initialData ? 'PATCH' : 'POST'
-      
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-      
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Something went wrong')
+      if (data) {
+        setFormData({
+          number: data.number,
+          start_date: data.start_date.split('T')[0],
+          end_date: data.end_date.split('T')[0],
+          status: data.status,
+        })
       }
-      
-      toast({
-        title: initialData ? 'Gameweek updated' : 'Gameweek created',
-        description: initialData 
-          ? `Gameweek ${data.number} has been updated successfully.` 
-          : `Gameweek ${data.number} has been created successfully.`,
-      })
-      
-      // Redirect to gameweeks list or the updated gameweek
-      if (initialData) {
-        router.push(`/admin/gameweeks/${initialData.id}`)
-      } else {
-        router.push('/admin/gameweeks')
-      }
-      router.refresh()
     } catch (error) {
-      console.error('Error submitting gameweek:', error)
+      console.error('Error fetching gameweek:', error)
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save gameweek',
+        description: 'Failed to load gameweek data',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsFetching(false)
+    }
+  }
+
+  const fetchNextGameweekNumber = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('gameweeks')
+        .select('number')
+        .order('number', { ascending: false })
+        .limit(1)
+
+      if (error) throw error
+      
+      if (data && data.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          number: data[0].number + 1
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching next gameweek number:', error)
+    }
+  }
+
+  const handleChange = (field: keyof GameweekFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    try {
+      setIsLoading(true)
+      
+      // Validate form data
+      if (!formData.number || !formData.start_date || !formData.end_date) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please fill in all required fields',
+          variant: 'destructive',
+        })
+        return
+      }
+      
+      // Format dates for database
+      const startDate = new Date(formData.start_date)
+      const endDate = new Date(formData.end_date)
+      
+      // Validate dates
+      if (startDate > endDate) {
+        toast({
+          title: 'Validation Error',
+          description: 'Start date must be before end date',
+          variant: 'destructive',
+        })
+        return
+      }
+      
+      if (isEditing) {
+        // Update existing gameweek
+        const { error } = await supabase
+          .from('gameweeks')
+          .update({
+            number: formData.number,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            status: formData.status,
+          })
+          .eq('id', gameweekId)
+
+        if (error) throw error
+        
+        toast({
+          title: 'Success',
+          description: 'Gameweek updated successfully',
+          variant: 'default',
+        })
+      } else {
+        // Create new gameweek
+        const { error } = await supabase
+          .from('gameweeks')
+          .insert({
+            number: formData.number,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            status: formData.status,
+          })
+
+        if (error) throw error
+        
+        toast({
+          title: 'Success',
+          description: 'Gameweek created successfully',
+          variant: 'default',
+        })
+      }
+      
+      // Redirect back to gameweeks list
+      router.push('/dashboard/admin/gameweeks')
+      router.refresh()
+    } catch (error) {
+      console.error('Error saving gameweek:', error)
+      toast({
+        title: 'Error',
+        description: isEditing ? 'Failed to update gameweek' : 'Failed to create gameweek',
         variant: 'destructive',
       })
     } finally {
@@ -106,103 +203,103 @@ export default function GameweekForm({ initialData }: GameweekFormProps) {
     }
   }
 
+  if (isFetching) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card>
+    <div className="space-y-6">
+      <div className="flex items-center">
+        <Button variant="ghost" size="sm" asChild className="mr-4">
+          <Link href="/dashboard/admin/gameweeks">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Gameweeks
+          </Link>
+        </Button>
+        <h2 className="text-2xl font-bold">{isEditing ? 'Edit Gameweek' : 'Create Gameweek'}</h2>
+      </div>
+
+      <Card>
+        <form onSubmit={handleSubmit}>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>{initialData ? 'Edit Gameweek' : 'Create Gameweek'}</CardTitle>
-              <Link href={initialData ? `/admin/gameweeks/${initialData.id}` : '/admin/gameweeks'} passHref>
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Back
-                </Button>
-              </Link>
-            </div>
+            <CardTitle>{isEditing ? 'Edit Gameweek Details' : 'New Gameweek Details'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Gameweek Number</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    The sequential number of this gameweek in the season
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="end_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            <div className="space-y-2">
+              <Label htmlFor="number">Gameweek Number</Label>
+              <Input
+                id="number"
+                type="number"
+                min="1"
+                value={formData.number}
+                onChange={(e) => handleChange('number', parseInt(e.target.value))}
+                required
               />
             </div>
             
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="upcoming">Upcoming</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="start_date">Start Date</Label>
+              <Input
+                id="start_date"
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => handleChange('start_date', e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="end_date">End Date</Label>
+              <Input
+                id="end_date"
+                type="date"
+                value={formData.end_date}
+                onChange={(e) => handleChange('end_date', e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleChange('status', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
-          <CardFooter className="flex justify-end">
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/admin/gameweeks">Cancel</Link>
+            </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {initialData ? 'Update Gameweek' : 'Create Gameweek'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isEditing ? 'Update Gameweek' : 'Create Gameweek'}
+                </>
+              )}
             </Button>
           </CardFooter>
-        </Card>
-      </form>
-    </Form>
+        </form>
+      </Card>
+    </div>
   )
 } 

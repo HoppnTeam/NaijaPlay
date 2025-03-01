@@ -15,6 +15,12 @@ const buttonVariants = cva(
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+        tertiary:
+          "bg-naijaplay-orange text-white shadow-sm hover:bg-naijaplay-orange/80",
+        success:
+          "bg-naijaplay-green text-white shadow-sm hover:bg-naijaplay-green/80",
+        warning:
+          "bg-naijaplay-yellow text-black shadow-sm hover:bg-naijaplay-yellow/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
