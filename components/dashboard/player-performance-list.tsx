@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { PlayerPerformance } from '@/lib/database-schema'
+import { useToast } from '@/components/ui/use-toast'
+import { matchDataService } from '@/lib/services/match-data-service'
+import { updatePlayerStatsLastUpdated } from '@/components/match/last-updated-indicator'
 
 interface PlayerPerformanceListProps {
   performances: PlayerPerformance[]
@@ -19,10 +22,14 @@ export default function PlayerPerformanceList({ performances }: PlayerPerformanc
   const [positionFilter, setPositionFilter] = useState('all')
   const [leagueFilter, setLeagueFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     filterPerformances()
+    // Set initial last updated time
+    setLastUpdated(new Date())
   }, [searchQuery, positionFilter, leagueFilter, performances])
 
   const filterPerformances = () => {
@@ -51,13 +58,52 @@ export default function PlayerPerformanceList({ performances }: PlayerPerformanc
   }
 
   const refreshData = async () => {
-    setIsLoading(true)
-    // In a real implementation, this would fetch fresh data from the API
-    // For now, we'll just simulate a refresh
-    setTimeout(() => {
-      router.refresh()
+    try {
+      setIsLoading(true)
+      
+      // Fetch the latest player statistics from the API
+      const response = await fetch('/api/players/statistics')
+      if (!response.ok) {
+        throw new Error('Failed to fetch player statistics')
+      }
+      
+      const data = await response.json()
+      
+      // Update player statistics in the database
+      const result = await matchDataService.updatePlayerStatistics(data.players || [])
+      
+      if (result) {
+        toast({
+          title: 'Player Data Updated',
+          description: 'Player statistics have been successfully updated with the latest match data.',
+          variant: 'default',
+          duration: 3000
+        })
+        
+        // Update last updated time
+        updatePlayerStatsLastUpdated()
+        
+        // Refresh the page to show updated data
+        router.refresh()
+      } else {
+        toast({
+          title: 'Update Failed',
+          description: 'There was an error updating player statistics. Please try again.',
+          variant: 'destructive',
+          duration: 3000
+        })
+      }
+    } catch (error) {
+      console.error('Error refreshing player data:', error)
+      toast({
+        title: 'Update Failed',
+        description: 'There was an error updating player statistics.',
+        variant: 'destructive',
+        duration: 3000
+      })
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   const getPositionBadge = (position: string) => {
@@ -125,10 +171,17 @@ export default function PlayerPerformanceList({ performances }: PlayerPerformanc
           size="icon" 
           onClick={refreshData}
           disabled={isLoading}
+          title="Refresh player data"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
+      
+      {lastUpdated && (
+        <div className="text-xs text-muted-foreground">
+          Last updated: {lastUpdated.toLocaleString()}
+        </div>
+      )}
       
       {filteredPerformances.length === 0 ? (
         <div className="text-center p-8 border rounded-lg text-muted-foreground">

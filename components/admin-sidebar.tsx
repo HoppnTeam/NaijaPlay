@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Users, BarChart, Settings, LogOut, Trophy } from 'lucide-react'
+import { Home, Users, BarChart, Settings, LogOut, Trophy, RefreshCw, Calendar, ShieldAlert, Layers } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
@@ -17,13 +17,38 @@ import {
 } from "@/components/ui/sidebar"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
+// Define the menu items with icon components instead of JSX elements
 const menuItems = [
-  { icon: Home, label: 'Dashboard', href: '/admin/dashboard' },
-  { icon: Users, label: 'Users', href: '/admin/users' },
-  { icon: Trophy, label: 'Leagues', href: '/admin/leagues' },
-  { icon: Users, label: 'Teams', href: '/admin/teams' },
-  { icon: BarChart, label: 'Statistics', href: '/admin/statistics' },
-  { icon: Settings, label: 'Settings', href: '/admin/settings' },
+  {
+    icon: BarChart,
+    label: 'Admin Dashboard',
+    href: '/admin/dashboard',
+  },
+  {
+    icon: Users,
+    label: 'User Management',
+    href: '/admin/users',
+  },
+  {
+    icon: Calendar,
+    label: 'Gameweek Management',
+    href: '/admin/gameweeks',
+  },
+  {
+    icon: RefreshCw,
+    label: 'Match Data Update',
+    href: '/admin/match-data',
+  },
+  {
+    icon: Layers,
+    label: 'League Management',
+    href: '/admin/leagues',
+  },
+  {
+    icon: Settings,
+    label: 'Settings',
+    href: '/admin/settings',
+  },
 ]
 
 export function AdminSidebar() {
@@ -33,13 +58,13 @@ export function AdminSidebar() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    router.push('/admin/login')
+    router.push('/login')
   }
 
   return (
     <SidebarProvider>
-      <Sidebar className="border-r border-border">
-        <SidebarHeader>
+      <Sidebar className="border-r border-border bg-naijaplay-green/5">
+        <SidebarHeader className="text-naijaplay-green">
           <h2 className="text-xl font-bold">Admin Panel</h2>
         </SidebarHeader>
         <SidebarContent>
@@ -47,8 +72,12 @@ export function AdminSidebar() {
             {menuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={pathname === item.href}>
-                  <Link href={item.href} className="flex items-center">
-                    <item.icon className="mr-2 h-4 w-4" />
+                  <Link 
+                    href={item.href} 
+                    className={`flex items-center ${pathname === item.href ? 'text-naijaplay-green font-medium' : 'hover:text-naijaplay-green'}`}
+                  >
+                    {/* Use the Icon component properly */}
+                    {item.icon && <item.icon className="mr-2 h-4 w-4" />}
                     {item.label}
                   </Link>
                 </SidebarMenuButton>
@@ -57,7 +86,7 @@ export function AdminSidebar() {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <Button onClick={handleSignOut} variant="ghost" className="w-full justify-start">
+          <Button onClick={handleSignOut} variant="ghost" className="w-full justify-start hover:text-naijaplay-orange">
             <LogOut className="mr-2 h-4 w-4" />
             Sign out
           </Button>

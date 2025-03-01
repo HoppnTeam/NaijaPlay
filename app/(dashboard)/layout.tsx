@@ -101,6 +101,26 @@ export default async function DashboardLayout({
             {children}
           </div>
         </main>
+        <footer className="bg-naijaplay-green/5 border-t border-naijaplay-green/10 py-6 mt-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="text-naijaplay-green font-semibold mb-4 md:mb-0">
+                NaijaPlay © {new Date().getFullYear()}
+              </div>
+              <div className="flex space-x-6">
+                <Link href="/terms" className="text-gray-600 hover:text-naijaplay-green">
+                  Terms
+                </Link>
+                <Link href="/privacy" className="text-gray-600 hover:text-naijaplay-green">
+                  Privacy
+                </Link>
+                <Link href="/contact" className="text-gray-600 hover:text-naijaplay-green">
+                  Contact
+                </Link>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     )
   } catch (error) {

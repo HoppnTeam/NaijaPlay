@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS=\"--require ./scripts/node-wrapper.js\" next dev",
-    "build": "NODE_OPTIONS=\"--require ./scripts/node-wrapper.js\" next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "update-types": "supabase gen types typescript --project-id rpqvknglzmzlycptgvhu > lib/database.types.ts",

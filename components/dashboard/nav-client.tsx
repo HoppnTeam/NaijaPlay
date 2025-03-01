@@ -25,6 +25,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useEffect, useState } from 'react'
+import { BrandLogo } from '@/components/ui/brand-logo'
+import { useTheme } from 'next-themes'
+import { Moon, Sun } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 
 interface NavClientProps {
   profile: {
@@ -40,12 +44,19 @@ export function NavClient({ profile }: NavClientProps) {
   const router = useRouter()
   const supabase = createClientComponentClient()
   const [isAdmin, setIsAdmin] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     // Check if user has admin role
     const adminCheck = profile?.role === 'admin'
     setIsAdmin(adminCheck)
   }, [profile])
+
+  // Only show UI after mount to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -61,97 +72,114 @@ export function NavClient({ profile }: NavClientProps) {
     return 'U'
   }
 
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark')
+  }
+
   return (
-    <nav className="bg-[#008753] text-white shadow-lg">
+    <nav className="bg-naijaplay-green text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/dashboard" className="text-xl sm:text-2xl font-bold py-2">
-                NaijaPlay
+              <Link href="/dashboard" className="py-2">
+                <BrandLogo variant="default" onDarkBackground={true} />
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-6 md:space-x-8">
               <Link 
                 href="/dashboard" 
-                className="border-[#FFD700] text-white inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                className="border-naijaplay-yellow text-white inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
                 <Trophy className="w-4 h-4 mr-2" />
                 Dashboard
               </Link>
               <Link 
                 href="/dashboard/leagues" 
-                className="border-transparent text-white/90 hover:text-white hover:border-[#FFD700] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                className="border-transparent text-white/90 hover:text-white hover:border-naijaplay-yellow inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
               >
                 <Target className="w-4 h-4 mr-2" />
                 Leagues
               </Link>
               <Link 
                 href="/dashboard/betting" 
-                className="border-transparent text-white/90 hover:text-white hover:border-[#FFD700] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                className="border-transparent text-white/90 hover:text-white hover:border-naijaplay-yellow inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
               >
                 <NairaSign className="w-4 h-4 mr-2" />
                 Betting
               </Link>
               <Link 
                 href="/dashboard/stats" 
-                className="border-transparent text-white/90 hover:text-white hover:border-[#FFD700] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                className="border-transparent text-white/90 hover:text-white hover:border-naijaplay-yellow inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
               >
                 <LineChart className="w-4 h-4 mr-2" />
                 Stats
               </Link>
               <Link 
                 href="/dashboard/tokens" 
-                className="border-transparent text-white/90 hover:text-white hover:border-[#FFD700] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                className="border-transparent text-white/90 hover:text-white hover:border-naijaplay-yellow inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
               >
                 <Wallet className="w-4 h-4 mr-2" />
                 Tokens
               </Link>
               <Link 
                 href="/dashboard/user-guide" 
-                className="border-transparent text-white/90 hover:text-white hover:border-[#FFD700] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                className="border-transparent text-white/90 hover:text-white hover:border-naijaplay-yellow inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
               >
                 <BookOpen className="w-4 h-4 mr-2" />
                 User Guide
               </Link>
             </div>
           </div>
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-[#FFD700] text-[#008753]">
-                      {getAvatarInitial()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile" className="cursor-pointer py-2">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-                
-                {/* Admin link based on state */}
-                {isAdmin && (
+          <div className="flex items-center space-x-4">
+            {mounted && (
+              <div className="flex items-center space-x-2 mr-2">
+                <Sun className="h-4 w-4 text-white" />
+                <Switch 
+                  checked={theme === 'dark'}
+                  onCheckedChange={toggleTheme}
+                  className="data-[state=checked]:bg-naijaplay-yellow"
+                />
+                <Moon className="h-4 w-4 text-white" />
+              </div>
+            )}
+            <div className="hidden sm:ml-6 sm:flex sm:items-center">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-naijaplay-yellow text-black">
+                        {getAvatarInitial()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuItem asChild>
-                    <Link href="/admin/dashboard" className="cursor-pointer py-2">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Admin Dashboard</span>
+                    <Link href="/dashboard/profile" className="cursor-pointer py-2">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
                     </Link>
                   </DropdownMenuItem>
-                )}
-                
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer py-2">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  
+                  {/* Admin link based on state */}
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/dashboard" className="cursor-pointer py-2">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Admin Dashboard</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer py-2">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <div className="flex items-center sm:hidden">
             <DropdownMenu>

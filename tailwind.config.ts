@@ -19,6 +19,11 @@ const config = {
     },
     extend: {
       colors: {
+        // NaijaPlay brand colors
+        "naijaplay-green": "#00A859",
+        "naijaplay-yellow": "#FFC107",
+        "naijaplay-orange": "#FF5722",
+        
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -31,6 +36,10 @@ const config = {
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+        },
+        tertiary: {
+          DEFAULT: "hsl(var(--tertiary))",
+          foreground: "hsl(var(--tertiary-foreground))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",

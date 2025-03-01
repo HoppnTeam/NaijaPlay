@@ -8,6 +8,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Match } from '@/lib/database-schema'
+import { useToast } from '@/components/ui/use-toast'
+import { matchDataService } from '@/lib/services/match-data-service'
+import { updatePlayerStatsLastUpdated } from '@/components/match/last-updated-indicator'
 
 interface LiveMatchesListProps {
   matches: Match[]
@@ -17,15 +20,56 @@ export default function LiveMatchesList({ matches }: LiveMatchesListProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
   const router = useRouter()
+  const { toast } = useToast()
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date())
 
   const refreshData = async () => {
-    setIsLoading(true)
-    // In a real implementation, this would fetch fresh data from the API
-    // For now, we'll just simulate a refresh
-    setTimeout(() => {
-      router.refresh()
+    try {
+      setIsLoading(true)
+      
+      // Fetch the latest player statistics from the API
+      const response = await fetch('/api/players/statistics')
+      if (!response.ok) {
+        throw new Error('Failed to fetch player statistics')
+      }
+      
+      const data = await response.json()
+      
+      // Update player statistics in the database
+      const result = await matchDataService.updatePlayerStatistics(data.players || [])
+      
+      if (result) {
+        // Update last updated time
+        updatePlayerStatsLastUpdated()
+        
+        toast({
+          title: 'Match Data Updated',
+          description: 'Match data has been successfully updated with the latest information.',
+          variant: 'default',
+          duration: 3000
+        })
+        
+        // Refresh the page to show updated data
+        router.refresh()
+      } else {
+        toast({
+          title: 'Update Failed',
+          description: 'There was an error updating match data. Please try again.',
+          variant: 'destructive',
+          duration: 3000
+        })
+      }
+    } catch (error) {
+      console.error('Error refreshing match data:', error)
+      toast({
+        title: 'Update Failed',
+        description: 'There was an error updating match data.',
+        variant: 'destructive',
+        duration: 3000
+      })
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   // Filter matches based on active tab
@@ -57,15 +101,23 @@ export default function LiveMatchesList({ matches }: LiveMatchesListProps) {
           </TabsList>
         </Tabs>
         
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={refreshData}
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground">
+              Last updated: {lastUpdated.toLocaleString()}
+            </span>
+          )}
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refreshData}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
       
       {filteredMatches.length === 0 ? (

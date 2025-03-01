@@ -1,88 +1,82 @@
--- Create bets table for tracking user betting activity
-CREATE TABLE IF NOT EXISTS public.bets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- Drop existing objects
+DROP VIEW IF EXISTS public.user_balances;
+DROP TABLE IF EXISTS public.bets;
+
+-- Create bets table
+CREATE TABLE public.bets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    bet_type TEXT NOT NULL CHECK (bet_type IN ('team', 'player')),
-    amount NUMERIC NOT NULL CHECK (amount > 0),
-    potential_win NUMERIC NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'won', 'lost', 'cancelled')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    gameweek INTEGER NOT NULL,
-    
-    -- Team bet fields
-    team1_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
-    team2_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
-    selected_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
-    team1_points INTEGER,
-    team2_points INTEGER,
-    
-    -- Player bet fields
-    player_id UUID REFERENCES public.players(id) ON DELETE SET NULL,
-    metric TEXT CHECK (metric IN ('goals', 'assists', 'clean_sheets', 'points')),
-    prediction INTEGER,
-    actual_value INTEGER,
-    
-    -- Constraints
-    CONSTRAINT team_bet_fields_check CHECK (
-        (bet_type = 'team' AND team1_id IS NOT NULL AND team2_id IS NOT NULL AND selected_team_id IS NOT NULL) OR
-        (bet_type != 'team')
-    ),
-    CONSTRAINT player_bet_fields_check CHECK (
-        (bet_type = 'player' AND player_id IS NOT NULL AND metric IS NOT NULL AND prediction IS NOT NULL) OR
-        (bet_type != 'player')
-    )
+    match_id UUID NOT NULL REFERENCES public.matches(id) ON DELETE CASCADE,
+    amount BIGINT NOT NULL CHECK (amount > 0),
+    odds DECIMAL(10,2) NOT NULL,
+    prediction TEXT NOT NULL CHECK (prediction IN ('home', 'draw', 'away')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'won', 'lost', 'void')),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Create user_balances table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.user_balances (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    balance NUMERIC NOT NULL DEFAULT 0 CHECK (balance >= 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT user_id_unique UNIQUE (user_id)
-);
+-- Create user_balances view
+CREATE OR REPLACE VIEW public.user_balances AS
+SELECT 
+    w.user_id,
+    w.balance,
+    COALESCE(SUM(b.amount) FILTER (WHERE b.status = 'pending'), 0) as pending_bets,
+    w.balance - COALESCE(SUM(b.amount) FILTER (WHERE b.status = 'pending'), 0) as available_balance
+FROM public.wallets w
+LEFT JOIN public.bets b ON w.user_id = b.user_id
+GROUP BY w.user_id, w.balance;
 
--- Create function to update user balance when a bet is placed
-CREATE OR REPLACE FUNCTION public.update_user_balance_on_bet()
+-- Add RLS policies for bets
+ALTER TABLE public.bets ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own bets
+CREATE POLICY "Users can view their own bets"
+    ON public.bets
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+-- Users can place bets
+CREATE POLICY "Users can place bets"
+    ON public.bets
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+-- Only system can update bets
+CREATE POLICY "Only system can update bets"
+    ON public.bets
+    FOR UPDATE
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+-- Create function to update user balance when bet is placed
+CREATE OR REPLACE FUNCTION update_balance_on_bet()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Deduct bet amount from user balance
-    UPDATE public.user_balances
-    SET 
-        balance = balance - NEW.amount,
-        updated_at = now()
+    -- Deduct bet amount from user's wallet
+    UPDATE public.wallets
+    SET balance = balance - NEW.amount
     WHERE user_id = NEW.user_id;
     
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger to update user balance when a bet is placed
-DROP TRIGGER IF EXISTS update_balance_on_bet_trigger ON public.bets;
-CREATE TRIGGER update_balance_on_bet_trigger
-BEFORE INSERT ON public.bets
-FOR EACH ROW
-EXECUTE FUNCTION public.update_user_balance_on_bet();
-
--- Create function to update user balance when a bet is settled
-CREATE OR REPLACE FUNCTION public.update_user_balance_on_bet_settlement()
+-- Create function to update user balance when bet is settled
+CREATE OR REPLACE FUNCTION update_balance_on_bet_settlement()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- If bet is won, add potential win to user balance
-    IF NEW.status = 'won' AND OLD.status = 'pending' THEN
-        UPDATE public.user_balances
-        SET 
-            balance = balance + NEW.potential_win,
-            updated_at = now()
-        WHERE user_id = NEW.user_id;
-    -- If bet is cancelled, refund the bet amount
-    ELSIF NEW.status = 'cancelled' AND OLD.status = 'pending' THEN
-        UPDATE public.user_balances
-        SET 
-            balance = balance + NEW.amount,
-            updated_at = now()
+    IF OLD.status = 'pending' AND NEW.status = 'won' THEN
+        -- Add winnings to user's wallet
+        UPDATE public.wallets
+        SET balance = balance + (NEW.amount * NEW.odds)::BIGINT
         WHERE user_id = NEW.user_id;
     END IF;
     
@@ -90,37 +84,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger to update user balance when a bet is settled
+-- Create triggers
+DROP TRIGGER IF EXISTS update_balance_on_bet_trigger ON public.bets;
+CREATE TRIGGER update_balance_on_bet_trigger
+    AFTER INSERT ON public.bets
+    FOR EACH ROW
+    EXECUTE FUNCTION update_balance_on_bet();
+
 DROP TRIGGER IF EXISTS update_balance_on_bet_settlement_trigger ON public.bets;
 CREATE TRIGGER update_balance_on_bet_settlement_trigger
-AFTER UPDATE ON public.bets
-FOR EACH ROW
-WHEN (OLD.status != NEW.status)
-EXECUTE FUNCTION public.update_user_balance_on_bet_settlement();
-
--- Add RLS policies
-ALTER TABLE public.bets ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own bets"
-ON public.bets
-FOR SELECT
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own bets"
-ON public.bets
-FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
--- Add RLS policies for user_balances
-ALTER TABLE public.user_balances ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own balance"
-ON public.user_balances
-FOR SELECT
-USING (auth.uid() = user_id);
-
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS bets_user_id_idx ON public.bets(user_id);
-CREATE INDEX IF NOT EXISTS bets_status_idx ON public.bets(status);
-CREATE INDEX IF NOT EXISTS bets_bet_type_idx ON public.bets(bet_type);
-CREATE INDEX IF NOT EXISTS user_balances_user_id_idx ON public.user_balances(user_id); 
+    AFTER UPDATE ON public.bets
+    FOR EACH ROW
+    WHEN (OLD.status = 'pending' AND NEW.status = 'won')
+    EXECUTE FUNCTION update_balance_on_bet_settlement(); 

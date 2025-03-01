@@ -1,5 +1,9 @@
+-- Drop existing tables if they exist
+DROP TABLE IF EXISTS public.user_challenges;
+DROP TABLE IF EXISTS public.weekly_challenges;
+
 -- Create weekly_challenges table
-CREATE TABLE IF NOT EXISTS public.weekly_challenges (
+CREATE TABLE public.weekly_challenges (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
   description TEXT NOT NULL,
@@ -13,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.weekly_challenges (
 );
 
 -- Create user_challenges table to track user progress
-CREATE TABLE IF NOT EXISTS public.user_challenges (
+CREATE TABLE public.user_challenges (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   challenge_id UUID NOT NULL REFERENCES public.weekly_challenges(id) ON DELETE CASCADE,
@@ -27,6 +31,10 @@ CREATE TABLE IF NOT EXISTS public.user_challenges (
 -- Add RLS policies for weekly_challenges
 ALTER TABLE public.weekly_challenges ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view active challenges" ON public.weekly_challenges;
+DROP POLICY IF EXISTS "Only admins can insert challenges" ON public.weekly_challenges;
+DROP POLICY IF EXISTS "Only admins can update challenges" ON public.weekly_challenges;
+
 CREATE POLICY "Anyone can view active challenges"
   ON public.weekly_challenges
   FOR SELECT
@@ -36,8 +44,10 @@ CREATE POLICY "Only admins can insert challenges"
   ON public.weekly_challenges
   FOR INSERT
   WITH CHECK (
-    auth.uid() IN (
-      SELECT user_id FROM admin_users
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
     )
   );
 
@@ -45,13 +55,19 @@ CREATE POLICY "Only admins can update challenges"
   ON public.weekly_challenges
   FOR UPDATE
   USING (
-    auth.uid() IN (
-      SELECT user_id FROM admin_users
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
     )
   );
 
 -- Add RLS policies for user_challenges
 ALTER TABLE public.user_challenges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own challenge progress" ON public.user_challenges;
+DROP POLICY IF EXISTS "System can insert user challenges" ON public.user_challenges;
+DROP POLICY IF EXISTS "System can update user challenges" ON public.user_challenges;
 
 CREATE POLICY "Users can view their own challenge progress"
   ON public.user_challenges

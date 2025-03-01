@@ -3,7 +3,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import type { Database } from '@/lib/database.types'
-import { Trophy, Home, Users, DollarSign, BarChart, Calendar, Shield, Settings } from 'lucide-react'
+import { Trophy, Home, Users, DollarSign, BarChart, Calendar, Shield, Settings, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default async function DashboardLayout({
@@ -75,6 +75,13 @@ export default async function DashboardLayout({
       name: 'Admin Dashboard',
       href: '/admin/dashboard',
       icon: Settings
+    })
+    
+    // Add Match Data Update page for admins
+    navigation.push({
+      name: 'Match Data Update',
+      href: '/dashboard/admin/match-data',
+      icon: RefreshCw
     })
   }
 

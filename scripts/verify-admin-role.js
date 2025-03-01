@@ -20,7 +20,7 @@ async function verifyAdminRole() {
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('id, email, role')
-      .eq('id', '5b6330a1-86a3-45a6-b871-704492093ff3')
+      .eq('id', '2fa02404-80dd-48bf-804a-68b359d7e69b')
       .single();
     
     if (profileError) {

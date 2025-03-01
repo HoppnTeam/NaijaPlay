@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { LoadingProvider } from "@/components/providers/loading-provider"
 import { ApiProvider } from '@/components/providers/api-provider'
 import { initializeApiFootball } from '@/lib/api-football/client'
+import { ThemeProvider } from '@/components/ui/theme-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,14 +28,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <LoadingProvider>
-          <ApiProvider>
-            {children}
-          </ApiProvider>
-          <Toaster />
-        </LoadingProvider>
+        <ThemeProvider>
+          <LoadingProvider>
+            <ApiProvider>
+              {children}
+            </ApiProvider>
+            <Toaster />
+          </LoadingProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
