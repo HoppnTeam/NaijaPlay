@@ -6,6 +6,11 @@ import { redirect } from "next/navigation"
 import PlayerPerformanceList from "@/components/dashboard/player-performance-list"
 import LiveMatchesList from "@/components/dashboard/live-matches-list"
 import UpcomingFixtures from "@/components/dashboard/upcoming-fixtures"
+import { MatchDataIntegration } from "@/components/match/match-data-integration"
+import { LastUpdatedIndicator } from "@/components/match/last-updated-indicator"
+import { GameweekMatchIntegration } from "@/components/match/gameweek-match-integration"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertTriangle } from "lucide-react"
 import { 
   SupabasePlayerPerformance, 
   SupabaseMatch, 
@@ -24,8 +29,22 @@ export default async function MatchSimulationPage() {
     redirect('/login')
   }
 
+  // Check if user has admin role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const isAdmin = profile?.role === 'admin'
+
+  // Initialize error states
+  let performancesError = null;
+  let liveMatchesError = null;
+  let fixturesError = null;
+
   // Fetch player performances from player_gameweek_stats table
-  const { data: rawPlayerPerformances, error: performancesError } = await supabase
+  const { data: rawPlayerPerformances, error: perfError } = await supabase
     .from('player_gameweek_stats')
     .select(`
       id,
@@ -58,48 +77,54 @@ export default async function MatchSimulationPage() {
     .order('id', { ascending: false })
     .limit(50)
 
+  if (perfError) {
+    console.error('Error fetching player performances:', perfError);
+    performancesError = perfError.message;
+  }
+
   // Create player performances array
-  const playerPerformances: PlayerPerformance[] = rawPlayerPerformances?.map(perf => {
-    const player = perf.players && Array.isArray(perf.players) && perf.players.length > 0 
-      ? perf.players[0] 
-      : null;
-    
-    const team = perf.teams && Array.isArray(perf.teams) && perf.teams.length > 0 
-      ? perf.teams[0] 
-      : null;
-    
-    return {
-      id: perf.id,
-      player_id: perf.player_id,
-      match_id: '', // Not available in player_gameweek_stats
-      gameweek_id: perf.gameweek_id,
-      minutes_played: perf.minutes_played || 0,
-      goals_scored: perf.goals_scored || 0,
-      assists: perf.assists || 0,
-      clean_sheets: perf.clean_sheets || 0,
-      goals_conceded: perf.goals_conceded || 0,
-      yellow_cards: perf.yellow_cards || 0,
-      red_cards: perf.red_cards || 0,
-      saves: perf.saves || 0,
-      points: perf.points || 0,
-      player: player ? {
-        id: player.id,
-        first_name: player.first_name,
-        last_name: player.last_name,
-        position: player.position,
-        team_id: player.team_id,
-        image_url: player.image_url,
-        team: team ? {
-          id: team.id,
-          name: team.name,
-          league: team.league
+  const playerPerformances: PlayerPerformance[] = !perfError && rawPlayerPerformances ? 
+    rawPlayerPerformances.map(perf => {
+      const player = perf.players && Array.isArray(perf.players) && perf.players.length > 0 
+        ? perf.players[0] 
+        : null;
+      
+      const team = perf.teams && Array.isArray(perf.teams) && perf.teams.length > 0 
+        ? perf.teams[0] 
+        : null;
+      
+      return {
+        id: perf.id,
+        player_id: perf.player_id,
+        match_id: '', // Not available in player_gameweek_stats
+        gameweek_id: perf.gameweek_id,
+        minutes_played: perf.minutes_played || 0,
+        goals_scored: perf.goals_scored || 0,
+        assists: perf.assists || 0,
+        clean_sheets: perf.clean_sheets || 0,
+        goals_conceded: perf.goals_conceded || 0,
+        yellow_cards: perf.yellow_cards || 0,
+        red_cards: perf.red_cards || 0,
+        saves: perf.saves || 0,
+        points: perf.points || 0,
+        player: player ? {
+          id: player.id,
+          first_name: player.first_name,
+          last_name: player.last_name,
+          position: player.position,
+          team_id: player.team_id,
+          image_url: player.image_url,
+          team: team ? {
+            id: team.id,
+            name: team.name,
+            league: team.league
+          } : undefined
         } : undefined
-      } : undefined
-    };
-  }) || [];
+      };
+    }) : [];
 
   // Fetch live matches
-  const { data: rawLiveMatches, error: liveMatchesError } = await supabase
+  const { data: rawLiveMatches, error: liveError } = await supabase
     .from('matches')
     .select(`
       id,
@@ -121,13 +146,17 @@ export default async function MatchSimulationPage() {
     `)
     .eq('status', 'in_progress')
 
+  if (liveError) {
+    console.error('Error fetching live matches:', liveError);
+    liveMatchesError = liveError.message;
+  }
+
   // Transform live matches using our helper function
-  const liveMatches: Match[] = rawLiveMatches?.map(match => 
-    transformMatch(match as SupabaseMatch)
-  ) || [];
+  const liveMatches: Match[] = !liveError && rawLiveMatches ? 
+    rawLiveMatches.map(match => transformMatch(match as SupabaseMatch)) : [];
 
   // Fetch upcoming fixtures
-  const { data: rawUpcomingFixtures, error: fixturesError } = await supabase
+  const { data: rawUpcomingFixtures, error: fixturesErr } = await supabase
     .from('matches')
     .select(`
       id,
@@ -152,22 +181,14 @@ export default async function MatchSimulationPage() {
     .order('match_date', { ascending: true })
     .limit(20)
 
-  // Transform upcoming fixtures using our helper function
-  const upcomingFixtures: Match[] = rawUpcomingFixtures?.map(match => 
-    transformMatch(match as SupabaseMatch)
-  ) || [];
+  if (fixturesErr) {
+    console.error('Error fetching upcoming fixtures:', fixturesErr);
+    fixturesError = fixturesErr.message;
+  }
 
-  if (performancesError) {
-    console.error('Error fetching player performances:', performancesError);
-  }
-  
-  if (liveMatchesError) {
-    console.error('Error fetching live matches:', liveMatchesError);
-  }
-  
-  if (fixturesError) {
-    console.error('Error fetching upcoming fixtures:', fixturesError);
-  }
+  // Transform upcoming fixtures using our helper function
+  const upcomingFixtures: Match[] = !fixturesErr && rawUpcomingFixtures ? 
+    rawUpcomingFixtures.map(match => transformMatch(match as SupabaseMatch)) : [];
 
   return (
     <div className="space-y-6">
@@ -176,6 +197,17 @@ export default async function MatchSimulationPage() {
         <p className="text-muted-foreground">
           View live match data, player performances, and upcoming fixtures.
         </p>
+      </div>
+
+      {isAdmin && (
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <MatchDataIntegration />
+          <GameweekMatchIntegration />
+        </div>
+      )}
+      
+      <div className="mb-4">
+        <LastUpdatedIndicator />
       </div>
 
       <Tabs defaultValue="player-performance" className="space-y-4">
@@ -194,7 +226,21 @@ export default async function MatchSimulationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PlayerPerformanceList performances={playerPerformances} />
+              {performancesError ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>
+                    Failed to load player performances: {performancesError}
+                  </AlertDescription>
+                </Alert>
+              ) : playerPerformances.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No player performance data available.
+                </div>
+              ) : (
+                <PlayerPerformanceList performances={playerPerformances} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -208,7 +254,21 @@ export default async function MatchSimulationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LiveMatchesList matches={liveMatches} />
+              {liveMatchesError ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>
+                    Failed to load live matches: {liveMatchesError}
+                  </AlertDescription>
+                </Alert>
+              ) : liveMatches.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No live matches currently in progress.
+                </div>
+              ) : (
+                <LiveMatchesList matches={liveMatches} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -222,7 +282,21 @@ export default async function MatchSimulationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <UpcomingFixtures matches={upcomingFixtures} />
+              {fixturesError ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>
+                    Failed to load upcoming fixtures: {fixturesError}
+                  </AlertDescription>
+                </Alert>
+              ) : upcomingFixtures.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No upcoming fixtures scheduled.
+                </div>
+              ) : (
+                <UpcomingFixtures matches={upcomingFixtures} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
