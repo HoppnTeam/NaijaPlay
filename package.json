@@ -23,7 +23,16 @@
     "supabase:new-migration": "supabase migration new",
     "supabase:check-env": "node scripts/check-env.js",
     "check-punycode": "node scripts/check-punycode-usage.js",
-    "test-wallet": "node scripts/test-wallet-api.js"
+    "test-wallet": "node scripts/test-wallet-api.js",
+    "prepare-deploy": "node scripts/prepare-for-deployment.js",
+    "pre-deploy-check": "node scripts/pre-deployment-check.js",
+    "deploy": "npm run pre-deploy-check && npm run prepare-deploy && vercel",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "run-checks": "node scripts/run-checks.js",
+    "check-database": "node scripts/check-database.js",
+    "verify-deployment": "node scripts/verify-deployment.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -88,13 +97,25 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.12",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
     "dotenv": "^16.4.7",
+    "eslint": "^9.22.0",
+    "eslint-config-next": "^15.2.2",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "msw": "^2.2.3",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   }

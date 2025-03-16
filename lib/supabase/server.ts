@@ -1,7 +1,7 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import type { Database } from '../database.types'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 // Determine which environment to use
 const isProduction = process.env.SUPABASE_ENV === 'production'
@@ -54,12 +54,15 @@ function validateEnvironmentVariables() {
   }
 }
 
-export function createServerClient() {
+/**
+ * Creates a Supabase client for server components and API routes
+ */
+export function createClient() {
   validateEnvironmentVariables()
   
   // The createServerComponentClient doesn't accept supabaseUrl and supabaseKey directly
   // It uses the environment variables by default
-  return createServerComponentClient<Database>({ cookies })
+  return createServerComponentClient({ cookies })
 }
 
 // Create a server client with service role for admin operations
@@ -70,7 +73,7 @@ export function createServiceClient() {
     throw new Error('Missing required environment variables for service client')
   }
   
-  return createClient<Database>(
+  return createSupabaseClient(
     supabaseUrl,
     supabaseServiceKey,
     {

@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Create supabase server client
-    const supabase = createServerClient()
+    const supabase = createClient()
 
     // Get authenticated user if available
     const { data: { user }, error } = await supabase.auth.getUser()

@@ -9,75 +9,124 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      health_checks: {
+        Row: {
+          id: string
+          created_at: string
+          status: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          status: string
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      players: {
+        Row: {
+          id: string
+          name: string
+          position: string
+          team: string
+          current_price: number
+          is_available: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          position: string
+          team: string
+          current_price: number
+          is_available?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          position?: string
+          team?: string
+          current_price?: number
+          is_available?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           id: string
           email: string
-          full_name: string | null
-          avatar_url: string | null
-          role: 'user' | 'admin'
-          provider: string | null
+          username: string
+          role: string
           created_at: string
           updated_at: string
         }
         Insert: {
           id: string
           email: string
-          full_name?: string | null
-          avatar_url?: string | null
-          role?: 'user' | 'admin'
-          provider?: string | null
+          username: string
+          role?: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           email?: string
-          full_name?: string | null
-          avatar_url?: string | null
-          role?: 'user' | 'admin'
-          provider?: string | null
+          username?: string
+          role?: string
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       teams: {
         Row: {
           id: string
           name: string
           user_id: string
-          formation: string
-          captain_id: string | null
-          vice_captain_id: string | null
-          total_value: number
           budget: number
           created_at: string
-          tokens: number
+          updated_at: string
         }
         Insert: {
           id?: string
           name: string
           user_id: string
-          formation?: string
-          captain_id?: string | null
-          vice_captain_id?: string | null
-          total_value?: number
-          budget?: number
+          budget: number
           created_at?: string
-          tokens?: number
+          updated_at?: string
         }
         Update: {
           id?: string
           name?: string
           user_id?: string
-          formation?: string
-          captain_id?: string | null
-          vice_captain_id?: string | null
-          total_value?: number
           budget?: number
           created_at?: string
-          tokens?: number
+          updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "teams_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       gameweeks: {
         Row: {
@@ -223,15 +272,9 @@ export interface Database {
         }
       }
     }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
+    Views: {}
+    Functions: {}
+    Enums: {}
   }
 }
 

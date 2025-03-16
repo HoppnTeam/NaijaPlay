@@ -135,4 +135,43 @@ CREATE TABLE team_players (
   for_sale BOOLEAN DEFAULT false,
   purchase_price BIGINT NOT NULL
 );
-``` 
+```
+
+## Deployment
+
+### GitHub and Vercel Deployment
+
+This project is configured for seamless deployment to Vercel through GitHub. Follow these steps:
+
+1. Prepare for deployment:
+   ```bash
+   node scripts/prepare-for-deployment.js
+   ```
+   This will create a sanitized .env.example file and check for any sensitive data.
+
+2. Push to GitHub:
+   ```bash
+   git add .
+   git commit -m "Ready for deployment"
+   git push
+   ```
+
+3. Connect to Vercel:
+   - Sign up/login to [Vercel](https://vercel.com)
+   - Import your GitHub repository
+   - Configure the environment variables as listed in .env.example
+   - Deploy!
+
+For detailed deployment instructions, see [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md).
+
+### Continuous Deployment
+
+This project includes a GitHub Actions workflow that automatically deploys:
+- Production deployments when pushing to the main branch
+- Preview deployments for pull requests
+
+To set up continuous deployment, add these secrets to your GitHub repository:
+- VERCEL_TOKEN
+- VERCEL_ORG_ID
+- VERCEL_PROJECT_ID
+- All environment variables listed in .env.example 
