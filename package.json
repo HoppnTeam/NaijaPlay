@@ -13,6 +13,8 @@
     "supabase:local": "node scripts/switch-env.js local",
     "supabase:prod": "node scripts/switch-env.js production",
     "supabase:migrate": "node scripts/migrate-to-local.js",
+    "supabase:migrate-to-prod": "node scripts/migrate-to-production.js",
+    "supabase:create-missing-tables": "node scripts/create-missing-tables.js",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
