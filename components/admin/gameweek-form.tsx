@@ -302,4 +302,6 @@ export function GameweekForm({ gameweekId }: GameweekFormProps) {
       </Card>
     </div>
   )
-} 
+}
+
+export default GameweekForm; 

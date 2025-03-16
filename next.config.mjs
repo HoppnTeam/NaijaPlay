@@ -20,7 +20,14 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
+  // Increase the timeout for static generation
+  staticPageGenerationTimeout: 180,
+  // Configure routes that should be dynamic and not statically generated
+  unstable_excludeFiles: ['**/api/**/*'],
+  // Output standalone build for better performance
+  output: 'standalone',
 }
 
 mergeConfig(nextConfig, userConfig)
