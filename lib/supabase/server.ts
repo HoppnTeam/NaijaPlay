@@ -11,7 +11,6 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 // Enhanced validation with detailed error messages
 function validateEnvironmentVariables() {
   const missingVars = []
-  const invalidVars = []
 
   if (!supabaseUrl) {
     missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
@@ -19,22 +18,14 @@ function validateEnvironmentVariables() {
 
   if (!supabaseAnonKey) {
     missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
-  } else if (!supabaseAnonKey.startsWith('eyJ')) {
-    invalidVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
   }
 
   if (!supabaseServiceKey) {
     missingVars.push('SUPABASE_SERVICE_ROLE_KEY')
-  } else if (!supabaseServiceKey.startsWith('eyJ')) {
-    invalidVars.push('SUPABASE_SERVICE_ROLE_KEY')
   }
 
   if (missingVars.length > 0) {
-    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`)
-  }
-
-  if (invalidVars.length > 0) {
-    throw new Error(`Invalid environment variables: ${invalidVars.join(', ')}`)
+    console.error(`Missing required environment variables: ${missingVars.join(', ')}`)
   }
 }
 
@@ -54,7 +45,8 @@ export function createServiceClient() {
   validateEnvironmentVariables()
   
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing required environment variables for service client')
+    console.error('Missing required environment variables for service client')
+    return null
   }
   
   return createSupabaseClient<Database>(

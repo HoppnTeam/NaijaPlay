@@ -2,11 +2,12 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { PointsService } from '@/lib/services/points-service'
+import { Database } from '@/lib/database.types'
 
 export async function POST(request: Request) {
   try {
     const { gameweekId, teamId } = await request.json()
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createRouteHandlerClient<Database>({ cookies })
     
     // Verify user has permission to update points
     const { data: { user } } = await supabase.auth.getUser()
