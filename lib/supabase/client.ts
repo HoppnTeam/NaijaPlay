@@ -6,9 +6,11 @@ const createClient = () => {
   // Check if required environment variables are available
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     console.error('Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY')
-    // Don't throw an error, just warn and return a client that will trigger proper server-side errors
+    console.error('Make sure these are set in your environment (Vercel dashboard for production)')
   }
   
+  // Use the default configuration which automatically uses environment variables
+  // This works better with Vercel's environment variable system
   return createClientComponentClient<Database>()
 }
 
