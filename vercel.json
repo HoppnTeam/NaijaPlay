@@ -34,6 +34,20 @@
     }
   ],
   "env": {
-    "SUPABASE_ENV": "production"
+    "SUPABASE_ENV": "production",
+    "NEXT_PUBLIC_MAX_TEAM_BUDGET": "100"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key",
+      "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+      "UPSTASH_REDIS_REST_URL": "@upstash_redis_rest_url",
+      "UPSTASH_REDIS_REST_TOKEN": "@upstash_redis_rest_token",
+      "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
+      "PAYSTACK_SECRET_KEY": "@paystack_secret_key",
+      "NEXT_PUBLIC_API_FOOTBALL_KEY": "@next_public_api_football_key",
+      "API_FOOTBALL_KEY": "@api_football_key"
+    }
   }
 } 
