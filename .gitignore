@@ -40,3 +40,4 @@ next-env.d.ts
 
 # Environment variables
 # ...existing code ...
+.env.test
